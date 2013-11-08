@@ -23,8 +23,8 @@ class BDecoder {
 		Map items = new LinkedHashMap();
 		try {
 			while(in.available() > 0) {
-			char c = readChar();
-			items = readDictionary();
+				char c = readChar();
+				items = readDictionary();
 			}
 		}
 		catch(IOException e) {
