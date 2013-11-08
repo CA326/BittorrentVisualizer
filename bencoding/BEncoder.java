@@ -6,8 +6,9 @@
 
 */
 
-import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Set;
 class BEncoder {
 	
 	static String bencode(Object o) {
