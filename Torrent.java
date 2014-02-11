@@ -13,8 +13,10 @@
 
 */
 import java.util.*;
-import java.io.*;
-import java.net.*;
+import java.io.RandomAccessFile;
+import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.File;
 import java.math.BigInteger;
 public class Torrent extends Thread {
 	private Map metainfo, infoDict;

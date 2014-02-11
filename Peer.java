@@ -14,9 +14,11 @@
 	Author: Stephan McLean
 	Date: 6th February 2014
 */
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
+import java.net.InetSocketAddress;
 import javax.xml.bind.DatatypeConverter;
 public class Peer {
 	private String ip;
@@ -170,17 +172,15 @@ public class Peer {
 					}
 					else {
 						// Request piece.
-						if(!peerChoking) {
-							if(canSend) {
-								out.writeInt(13);
-								out.writeByte(6);
-								out.writeInt(currentPiece);
-								System.out.println("Requesting piece: " + currentPiece);
-								out.writeInt(0);
-								out.writeInt(torrent.getBlockSize());
+						if(canSend) {
+							out.writeInt(13);
+							out.writeByte(6);
+							out.writeInt(currentPiece);
+							System.out.println("Requesting piece: " + currentPiece);
+							out.writeInt(0);
+							out.writeInt(torrent.getBlockSize());
 
-								canSend = false;
-							}
+							canSend = false;
 						}
 					}
 				}
@@ -198,7 +198,10 @@ public class Peer {
 		*/
 
 		if(s == null) {
-			s = new Socket(ip, port);
+			// Try to connect to the peer.
+			// Timeout after 20 seconds.
+			s = new Socket();
+			s.connect(new InetSocketAddress(ip, port), 20000);
 		}
 		in = new DataInputStream(s.getInputStream());
 		out = new DataOutputStream(s.getOutputStream());
@@ -287,9 +290,15 @@ public class Peer {
 
 	public void closePeerConnection() {
 		try {
-			s.close();
-			in.close();
-			out.close();
+			if(s != null) {
+				s.close();
+			}
+			if(in != null) {
+				in.close();
+			}
+			if(out != null) {
+				out.close();
+			}
 			torrent.removePeer(this);
 		}
 		catch(IOException e) {

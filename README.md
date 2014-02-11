@@ -19,4 +19,4 @@ After we have a stable implementation of the protocol we are going to incorporat
 - Make class Peer a thread.
 - Come up with and implement a file caching algorithm.
 - Need to group classes in packages.
-- Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (imports, exceptions).
+- Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (exceptions).
