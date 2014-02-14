@@ -9,8 +9,6 @@
 		TODO:
 			Need to take Bitfield into account, currently requesting pieces
 			without knowing if the peer has them or not.
-			Move all Message creation and parsing to Message classes.
-
 	Author: Stephan McLean
 	Date: 6th February 2014
 */
@@ -103,57 +101,82 @@ public class Peer {
 		}
 		performHandShake();
 
-		try {
-			while(!torrent.isDownloaded()) {
-				if(in.available() > 0) {
-					// Peer has something to say, parse the message
-					int len = in.readInt();
-					Message m = Message.parse(len, in);
+		while(!torrent.isDownloaded()) {
+			int available = 0;
+			try {
+				available = in.available();
+			}	
+			catch(IOException e) {
+				System.out.println("Error communicating with peer: " + this);
+			}
 
-					switch(m.getID()) {
-						case 0:
-							choke();
-							break;
-						case 1:
-							unChoke();
-							break;
-						case 2:
-							interested();
-							break;
-						case 3:
-							notInterested();
-							break;
-						case 4:
-							have(m);
-							break;
-						case 5:
-							bitfield(m);
-							break;	
-						case 7:
-							piece(m);
-							break;
-					}
+			if(available > 0) {
+				// Peer has something to say, parse the message
+				try {
+					readMessage();
 				}
-				else {
-					if(peerChoking) {
-						if(canSend) {
-							new Message(2, 1, null).send(out);
-							canSend = false;
-						}
-					}
-					else {
-						// Request piece.
-						if(canSend) {
-							new Request(6, 13, currentPiece, 0,
-										torrent.getBlockSize()).send(out);
-							canSend = false;
-						}
-					}
+				catch(IOException e) {
+					System.out.println("Error reading peer message");
 				}
 			}
+			else {
+				sendPeerMessage();
+			}
 		}
-		catch(IOException e) {
-			System.out.println("Error communicating with peer: " + this);
+	}
+
+	private void readMessage() throws IOException {
+		/*
+			The peer has sent a message.
+			Parse it here.
+		*/
+		int len = in.readInt();
+		Message m = Message.parse(len, in);
+
+		switch(m.getID()) {
+			case Message.CHOKE:
+				choke();
+				break;
+			case Message.UNCHOKE:
+				unChoke();
+				break;
+			case Message.INTERESTED:
+				interested();
+				break;
+			case Message.NOT_INTERESTED:
+				notInterested();
+				break;
+			case Message.HAVE:
+				have(m);
+				break;
+			case Message.BITFIELD:
+				bitfield(m);
+				break;	
+			case Message.PIECE:
+				piece(m);
+				break;
+		}
+	}
+
+	private void sendPeerMessage() {
+		/*
+			If the peer has nothing to say we will
+			send an Interested message if we are choked.
+			otherwise we will request a piece of the file.
+		*/
+		if(peerChoking) {
+			if(canSend) {
+				new Message(Message.INTERESTED, 1, null).send(out);
+				canSend = false;
+			}
+		}
+		else {
+			// Request piece.
+			if(canSend) {
+				new Request(6, Message.REQUEST, currentPiece, 0,
+							torrent.getBlockSize()).send(out);
+				canSend = false;
+			}
 		}
 	}
 
