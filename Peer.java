@@ -103,83 +103,49 @@ public class Peer {
 		}
 		performHandShake();
 
-		/*
-			Now start communicating.
-			After performing the handshake the peer
-			should send the *bitfield* and possibly some 
-			*have* messages.
-		*/
 		try {
 			while(!torrent.isDownloaded()) {
 				if(in.available() > 0) {
 					// Peer has something to say, parse the message
 					int len = in.readInt();
-					System.out.println("Length: " + len);
-					if(len == 0) {
-						// Keep alive message
-						continue;
-					}
+					Message m = Message.parse(len, in);
 
-					int id = in.readByte();
-					switch(id) {
+					switch(m.getID()) {
 						case 0:
-							System.out.println("Choke message");
-							peerChoking = true;
+							choke();
 							break;
 						case 1:
-							System.out.println("Unchoke");
-							canSend = true;
-							peerChoking = false;
+							unChoke();
 							break;
 						case 2:
-							System.out.println("Interested");
-							peerInterested = true;
+							interested();
 							break;
 						case 3:
-							System.out.println("Not interested");
-							peerInterested = false;
+							notInterested();
 							break;
 						case 4:
-							int h = in.readInt();
-							System.out.println("have: " + h);
+							have(m);
 							break;
 						case 5:
-							System.out.println("Bitfield");
-							byte [] bitfield = new byte[len - 1];
-							in.read(bitfield);
-							String s = DatatypeConverter.printHexBinary(bitfield);
-							System.out.println(s);
+							bitfield(m);
 							break;	
 						case 7:
-							// Received a piece
-							System.out.println("Received piece");
-							int index = in.readInt();
-							int offset = in.readInt();
-							byte [] block = new byte[len - 9];
-							in.readFully(block);
-							currentPiece++;
-							canSend = true;
-							torrent.piece(index, offset, block);
+							piece(m);
 							break;
 					}
 				}
 				else {
 					if(peerChoking) {
 						if(canSend) {
-							out.writeInt(1); out.writeByte(2);
+							new Message(2, 1, null).send(out);
 							canSend = false;
 						}
 					}
 					else {
 						// Request piece.
 						if(canSend) {
-							out.writeInt(13);
-							out.writeByte(6);
-							out.writeInt(currentPiece);
-							System.out.println("Requesting piece: " + currentPiece);
-							out.writeInt(0);
-							out.writeInt(torrent.getBlockSize());
-
+							new Request(6, 13, currentPiece, 0,
+										torrent.getBlockSize()).send(out);
 							canSend = false;
 						}
 					}
@@ -248,6 +214,8 @@ public class Peer {
 	private boolean handShakeOK(byte [] ourHandshake, byte [] peerHandshake) {
 		/*
 			Compare the peers handshake with ours.
+			TODO:
+				Implement this
 		*/
 		return true;
 	}
@@ -312,5 +280,48 @@ public class Peer {
 
 	public String toString() {
 		return ip + ":" + port;
+	}
+
+	/*
+		Message receiving methods.
+	*/
+
+	public void choke() {
+		peerChoking = true;
+	}
+
+	public void unChoke() {
+		canSend = true;
+		peerChoking = false;
+	}
+
+	public void interested() {
+		peerInterested = true;
+	}
+
+	public void notInterested() {
+		peerInterested = false;
+	}
+
+	public void have(Message m) {
+		Have h = (Have) m;
+		System.out.println(h);
+	}
+
+	public void bitfield(Message m) {
+		Bitfield b = (Bitfield) m;
+		byte [] bitfield = b.getBitfield();
+		String s = DatatypeConverter.printHexBinary(bitfield);
+		System.out.println(s);
+	}
+
+	public void piece(Message m) {
+		Piece p = (Piece) m;
+		int index = p.getIndex();
+		int offset = p.getOffset();
+		byte [] block = p.getBlock();
+		currentPiece++;
+		canSend = true;
+		torrent.piece(index, offset, block);
 	}
 }
