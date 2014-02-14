@@ -173,7 +173,7 @@ public class Peer {
 		else {
 			// Request piece.
 			if(canSend) {
-				new Request(6, Message.REQUEST, currentPiece, 0,
+				new Request(Message.REQUEST, 13, currentPiece, 0,
 							torrent.getBlockSize()).send(out);
 				canSend = false;
 			}
