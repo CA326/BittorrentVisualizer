@@ -15,6 +15,7 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import javax.xml.bind.DatatypeConverter;
@@ -41,6 +42,9 @@ public class Peer {
 	// don't send any more until we get the response.
 	private boolean canSend = true;
 
+	// PieceIndex -> No.bytes downloaded
+	private HashMap<Integer, Integer> downloaded;
+	private int numOfPendingRequests = 0;
 	private int currentPiece = 0; // Very crude, change later.
 
 	public Peer(String ip1, int port1, Torrent t) {
@@ -52,6 +56,11 @@ public class Peer {
 		torrent = t;
 		infoHash = torrent.infoHash();
 		peerID = torrent.peerID();
+		downloaded = new HashMap<Integer, Integer>();
+
+		for(int i = 0; i < torrent.getNumberOfPieces(); i++) {
+			downloaded.put(i, 0);
+		}
 	}
 
 	public Peer(Socket s1) {
@@ -173,11 +182,36 @@ public class Peer {
 		else {
 			// Request piece.
 			if(canSend) {
-				new Request(Message.REQUEST, 13, currentPiece, 0,
-							torrent.getBlockSize()).send(out);
-				canSend = false;
+				chainRequests();
 			}
 		}
+	}
+
+	private void chainRequests() {
+		/*
+			Queue multiple requests to improve performance.
+		*/
+		while(numOfPendingRequests < 5 && currentPiece < torrent.getNumberOfPieces()) {
+			if(downloaded.get(currentPiece) == torrent.getPieceLength()) {
+				// Next piece.. Eventually we will have an algorithm
+				// to choose pieces.
+				currentPiece++;
+			}
+			if(currentPiece == (torrent.getNumberOfPieces() - 1)) {
+				// Last piece
+				new Request(Message.REQUEST, 13, currentPiece, 
+				downloaded.get(currentPiece), 
+				torrent.getLastBlockSize()).send(out);
+				break;
+			}
+			new Request(Message.REQUEST, 13, currentPiece, 
+				downloaded.get(currentPiece), 
+				torrent.getBlockSize()).send(out);
+			downloaded.put(currentPiece, downloaded.get(currentPiece)
+						 + torrent.getBlockSize());
+			numOfPendingRequests++;
+		}
+		canSend = false;
 	}
 
 	private void connectAndSetUp() throws IOException {
@@ -343,8 +377,9 @@ public class Peer {
 		int index = p.getIndex();
 		int offset = p.getOffset();
 		byte [] block = p.getBlock();
-		currentPiece++;
-		canSend = true;
+		numOfPendingRequests--;
+		if(numOfPendingRequests == 0)
+			canSend = true;
 		torrent.piece(index, offset, block);
 	}
 }

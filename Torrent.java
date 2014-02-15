@@ -30,9 +30,12 @@ public class Torrent extends Thread {
 	private String left;
 	private String name;
 	private int pieceLength;
+	private int totalLength;
 	private String pieces; // SHA1 values of each piece.
+	private int numberOfPieces;
 	private ArrayList<Peer> peers;
 	private RandomAccessFile file;
+	private Bitfield bitfield;
 
 	// Testing only
 	private long startTime;
@@ -48,11 +51,15 @@ public class Torrent extends Thread {
 		tracker = (String) metainfo.get("announce");
 		infoDict = (Map) metainfo.get("info");
 		left = "" + infoDict.get("length");
+		totalLength = Integer.parseInt(left);
 		pieceLength = (int) infoDict.get("piece length");
 		pieces = (String) infoDict.get("pieces");
 		name = (String) infoDict.get("name");
 		setUpFile();
-		System.out.println("Pieces: " + pieces.length() / 20);
+		numberOfPieces = pieces.length() / 20;
+		System.out.println("Pieces: " + numberOfPieces);
+
+		initBitfield();
 
 		hash = computeHash();
 		peerID = generatePeerID();
@@ -73,6 +80,8 @@ public class Torrent extends Thread {
 		Tracker t = new Tracker(tracker, percentEncode(hash), peerID, port, downloaded,
 								 uploaded, left);
 		Map trackerResponse = t.contact();
+
+		// Need to deal with Map model here.
 		String binaryPeer = (String) trackerResponse.get("peers");
 		try {
 			binaryPeer = String.format("%x", 
@@ -120,6 +129,11 @@ public class Torrent extends Thread {
 		for(Peer p : peers) {
 			p.run();
 		}
+	}
+
+	private void initBitfield() {
+		byte [] b = new byte[pieces.length() / 20];
+		bitfield = new Bitfield(Message.BITFIELD, b.length + 1, b);
 	}
 
 	public void cleanUp() {
@@ -217,19 +231,20 @@ public class Torrent extends Thread {
 		/*
 			The size of a block to download from the client.
 			The most commonly used is 2^14 (16kb)
-
-			TODO:
-				Need to take into account peers requesting
-				part of a block. 
-				Move this method?
 		*/
-		int blockSize = (int) Math.pow(2, 14);
-		if(Integer.parseInt(left) < blockSize) {
-			return Integer.parseInt(left);
-		}
-		else {
-			return blockSize;
-		}
+		return (int) Math.pow(2, 14);
+	}
+
+	public int getLastBlockSize() {
+		// Last block is irregular
+		return totalLength - ((int)(Math.pow(2, 14)) * (numberOfPieces - 1));
+	}
+
+	public void peerBitfield(Bitfield b, Peer p) {
+		/*
+			Peer has received a bitfield. We will use this when requesting 
+			pieces.
+		*/
 	}
 
 	public String infoHash() {
@@ -254,6 +269,14 @@ public class Torrent extends Thread {
 
 	public String left() {
 		return left;
+	}
+
+	public int getNumberOfPieces() {
+		return numberOfPieces;
+	}
+
+	public int getPieceLength() {
+		return pieceLength;
 	}
 
 	public boolean isDownloaded() {

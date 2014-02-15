@@ -31,7 +31,8 @@ class Request extends Message {
 	}
 
 	public String toString() {
-		return "ID: " + super.getID() + " Len: " + super.getLength() + "Index: " + index +
-				" Begin: " + begin + " BLength: " + blength;
+		return "ID: " + super.getID() + " Len: " + super.getLength() 
+				+ "Index: " + index + " Begin: " + begin + " BLength: " + 
+				blength;
 	}
 }
