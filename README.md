@@ -15,7 +15,7 @@ After we have a stable implementation of the protocol we are going to incorporat
 ###TODO:
 - Need to deal with multi-file torrents, first by checking the metainfo file.
 - Make class Tracker a thread so we can send stats and receive updates at a regular interval.
-- Model Messages as classes.
+- ~~Model Messages as classes.~~
 - Make class Peer a thread.
 - Come up with and implement a file caching algorithm.
 - Need to group classes in packages.
