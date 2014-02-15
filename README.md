@@ -13,10 +13,10 @@ After we have a stable implementation of the protocol we are going to incorporat
 - Writes downloaded pieces to disk.
 
 ###TODO:
-- Need to deal with multi-file torrents, first by checking the metainfo file.
+- Need to deal with all possibilities in the meta-info file e.g multiple file torrents.
 - Make class Tracker a thread so we can send stats and receive updates at a regular interval.
 - ~~Model Messages as classes.~~
-- Make class Peer a thread.
+- ~~Make class Peer a thread.~~
 - Come up with and implement a file caching algorithm.
 - Need to group classes in packages.
 - Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (exceptions).

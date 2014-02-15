@@ -36,6 +36,7 @@ public class Torrent extends Thread {
 	private ArrayList<Peer> peers;
 	private RandomAccessFile file;
 	private Bitfield bitfield;
+	private HashMap<Peer, Integer> pieceIndexes;
 
 	// Testing only
 	private long startTime;
@@ -58,6 +59,7 @@ public class Torrent extends Thread {
 		setUpFile();
 		numberOfPieces = pieces.length() / 20;
 		System.out.println("Pieces: " + numberOfPieces);
+		pieceIndexes = new HashMap<Peer, Integer>();
 
 		initBitfield();
 
@@ -93,17 +95,22 @@ public class Torrent extends Thread {
 		for(int i = 0; i < binaryPeer.length(); i += 12) {
 			addPeer(Peer.parse(binaryPeer.substring(i, i + 12), this));
 		}
-		// Will change this later.
-		peers.get(1).run();
+		
+		startPeers();
 	}
 
 	public void addPeer(Peer p) {
-		peers.add(p);
+		synchronized(peers) {
+			peers.add(p);
+			pieceIndexes.put(p, 0);
+		}
 	}
 
 	public void removePeer(Peer p) {
-		System.out.println("Removing peer: " + p);
-		peers.remove(p);
+		synchronized(peers) {
+			System.out.println("Removing peer: " + p);
+			peers.remove(p);
+		}
 	}
 
 	public void run() {
@@ -117,6 +124,7 @@ public class Torrent extends Thread {
 			cleanUp();
 
 			long stopTime = System.currentTimeMillis();
+			System.out.println();
 			System.out.println("Download took: " + ((stopTime - startTime) / 1000) + " seconds");
 		}
 		catch(Exception e) {
@@ -127,7 +135,7 @@ public class Torrent extends Thread {
 
 	private void startPeers() {
 		for(Peer p : peers) {
-			p.run();
+			p.start();
 		}
 	}
 
@@ -137,9 +145,11 @@ public class Torrent extends Thread {
 	}
 
 	public void cleanUp() {
-		//for(Peer p : peers) {
-		//	p.closePeerConnection();
-		//}
+		synchronized(peers) {
+			for(Peer p : peers) {
+				p.closePeerConnection();
+			}
+		}
 
 		try {
 			file.close();
@@ -240,11 +250,27 @@ public class Torrent extends Thread {
 		return totalLength - ((int)(Math.pow(2, 14)) * (numberOfPieces - 1));
 	}
 
-	public void peerBitfield(Bitfield b, Peer p) {
-		/*
-			Peer has received a bitfield. We will use this when requesting 
-			pieces.
-		*/
+	public int getNextPieceIndex(Peer p) {
+		int current = pieceIndexes.get(p);
+		int next = current + 1;
+		if(!p.hasDownloaded(current)) {
+			return current;
+		}
+		else {
+			boolean duplicate = false;
+			do {
+				duplicate = false;
+				for(Peer peer : peers) {
+					if(peer.isDownloading(next)) {
+						duplicate = true;
+						next++;
+						break;
+					}
+				}
+			} while(duplicate);
+			pieceIndexes.put(p, next);
+			return next;
+		}
 	}
 
 	public String infoHash() {
@@ -294,8 +320,15 @@ public class Torrent extends Thread {
 		try {
 			file.seek((index * pieceLength) + offset);
 			file.write(block);
+			if(offset + block.length == getPieceLength()) {
+				bitfield.setBit(index);
+			}
 			left = "" + (Integer.parseInt(left) - block.length);
-			System.out.println("Left: " + left);
+			double percent = (Double.parseDouble(left) / totalLength) * 100;
+			percent = 100 - percent;
+			int intPercent = (int) percent;
+			System.out.print("\r" + intPercent + "%");
+			System.out.flush();
 		}
 		catch(IOException e) {
 			System.out.println("Could not write block to file.");

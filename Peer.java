@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import javax.xml.bind.DatatypeConverter;
-public class Peer {
+public class Peer extends Thread {
 	private String ip;
 	private int port;
 	private Torrent torrent;
@@ -45,7 +45,9 @@ public class Peer {
 	// PieceIndex -> No.bytes downloaded
 	private HashMap<Integer, Integer> downloaded;
 	private int numOfPendingRequests = 0;
-	private int currentPiece = 0; // Very crude, change later.
+	private int currentPiece = -1;
+
+	private Bitfield bitfield;
 
 	public Peer(String ip1, int port1, Torrent t) {
 		/*
@@ -191,11 +193,15 @@ public class Peer {
 		/*
 			Queue multiple requests to improve performance.
 		*/
-		while(numOfPendingRequests < 5 && currentPiece < torrent.getNumberOfPieces()) {
+		while(numOfPendingRequests < 5) {
+			if(currentPiece < 0) {
+				currentPiece = torrent.getNextPieceIndex(this);
+			}
+
 			if(downloaded.get(currentPiece) == torrent.getPieceLength()) {
 				// Next piece.. Eventually we will have an algorithm
 				// to choose pieces.
-				currentPiece++;
+				currentPiece = torrent.getNextPieceIndex(this);
 			}
 			if(currentPiece == (torrent.getNumberOfPieces() - 1)) {
 				// Last piece
@@ -313,6 +319,9 @@ public class Peer {
 		return handshake;
 	}
 
+	/*
+		Public methods
+	*/
 	public void closePeerConnection() {
 		try {
 			if(s != null) {
@@ -324,7 +333,6 @@ public class Peer {
 			if(out != null) {
 				out.close();
 			}
-			torrent.removePeer(this);
 		}
 		catch(IOException e) {
 			System.out.println("Could not close connections");
@@ -339,40 +347,54 @@ public class Peer {
 		return ip + ":" + port;
 	}
 
+	public boolean canDownload(int i) {
+		return bitfield.bitSet(i);
+	}
+
+	public boolean hasDownloaded(int i) {
+		return downloaded.get(i) == torrent.getPieceLength();
+	}
+
+	public boolean isDownloading(int i) {
+		return currentPiece == i;
+	}
+
+	/*
+		End of public methods
+	*/
+
 	/*
 		Message receiving methods.
 	*/
 
-	public void choke() {
+	private void choke() {
 		peerChoking = true;
 	}
 
-	public void unChoke() {
+	private void unChoke() {
 		canSend = true;
 		peerChoking = false;
 	}
 
-	public void interested() {
+	private void interested() {
 		peerInterested = true;
 	}
 
-	public void notInterested() {
+	private void notInterested() {
 		peerInterested = false;
 	}
 
-	public void have(Message m) {
+	private void have(Message m) {
 		Have h = (Have) m;
-		System.out.println(h);
+		bitfield.setBit(h.getPieceIndex());
 	}
 
-	public void bitfield(Message m) {
+	private void bitfield(Message m) {
 		Bitfield b = (Bitfield) m;
-		byte [] bitfield = b.getBitfield();
-		String s = DatatypeConverter.printHexBinary(bitfield);
-		System.out.println(s);
+		bitfield = b;
 	}
 
-	public void piece(Message m) {
+	private void piece(Message m) {
 		Piece p = (Piece) m;
 		int index = p.getIndex();
 		int offset = p.getOffset();
