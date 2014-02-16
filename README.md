@@ -15,8 +15,10 @@ After we have a stable implementation of the protocol we are going to incorporat
 ###TODO:
 - Need to deal with all possibilities in the meta-info file e.g multiple file torrents.
 - Make class Tracker a thread so we can send stats and receive updates at a regular interval.
+- Deal with UDP Trackers
 - ~~Model Messages as classes.~~
 - ~~Make class Peer a thread.~~
 - Come up with and implement a file caching algorithm.
+- Implement a piece choosing algorithm
 - Need to group classes in packages.
 - Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (exceptions).
