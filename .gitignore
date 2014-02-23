@@ -1,1 +1,6 @@
+# Compiled. #
 *.class
+
+# Other #
+*.torrent
+
