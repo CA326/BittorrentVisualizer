@@ -6,12 +6,14 @@
 
 */
 
+package btv.bencoding;
+
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
-class BEncoder {
+public class BEncoder {
 	
-	static String bencode(Object o) {
+	public static String bencode(Object o) {
 		if(o instanceof String)
 			return bencode((String) o);
 		else if(o instanceof Integer)
@@ -22,15 +24,15 @@ class BEncoder {
 			return bencode((Map) o);
 	}
 	
-	static String bencode(String s) {
+	public static String bencode(String s) {
 		return s.length() + ":" + s;
 	}
 	
-	static String bencode(int n) {
+	public static String bencode(int n) {
 		return "i" + n + "e";
 	}
 	
-	static String bencode(ArrayList<Object> a) {
+	public static String bencode(ArrayList<Object> a) {
 		String result = "l";
 	
 		for(int i = 0; i < a.size(); i++) {
@@ -40,7 +42,7 @@ class BEncoder {
 		return result + "e";
 	}
 	
-	static String bencode(Map m) {
+	public static String bencode(Map m) {
 		String result = "d";
 	
 		Set<Object> keys = m.keySet();

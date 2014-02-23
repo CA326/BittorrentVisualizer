@@ -1,5 +1,6 @@
+package btv.download.utils;
 import java.security.*;
-class SHA1 {
+public class SHA1 {
     /*
      * A convenience class for generating a SHA1 checksum for a string.
      * To use this class:

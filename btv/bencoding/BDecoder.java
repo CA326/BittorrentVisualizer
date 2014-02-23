@@ -6,12 +6,14 @@
 
 */
 
+package btv.bencoding;
+
 import java.util.*;
 import java.io.*;
-class BDecoder {
+public class BDecoder {
 	private static String in = null;
 
-	static Object decode(String data) {
+	public static Object decode(String data) {
 		in = data;
 		return readItem(readChar());
 	}

@@ -5,6 +5,10 @@
 	Date: 7th February 2014
 
 */
+
+package btv.download.peer;
+import btv.download.Torrent;
+
 import java.net.*;
 import java.io.*;
 

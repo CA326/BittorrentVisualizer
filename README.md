@@ -21,5 +21,9 @@ After we have a stable implementation of the protocol we are going to incorporat
 - Come up with and implement a file caching algorithm.
 - Implement a piece choosing algorithm
 - Need to group classes in packages.
-- Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (exceptions).
-- Group classes in packages.
+- Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (exceptions, preamble missing).
+- ~~Group classes in packages.~~
+
+###More TODO(Further away):
+- Event handling.
+- GUI
