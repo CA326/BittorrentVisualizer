@@ -46,6 +46,7 @@ public class Torrent extends Thread {
     private ArrayList<Peer> peers;
     private RandomAccessFile file;
     private Bitfield bitfield;
+    private Bitfield requested; // Keep track of requested pieces.
     private HashMap<Peer, Integer> pieceIndexes;
 
     // Testing only
@@ -103,7 +104,12 @@ public class Torrent extends Thread {
         
         // Now parse the peers
         for(int i = 0; i < binaryPeer.length(); i += 12) {
-            addPeer(Peer.parse(binaryPeer.substring(i, i + 12), this));
+            if(peers.size() <= 25) {
+                addPeer(Peer.parse(binaryPeer.substring(i, i + 12), this));
+            }
+            else {
+                break;
+            }
         }
         
         startPeers();
@@ -152,6 +158,7 @@ public class Torrent extends Thread {
     private void initBitfield() {
         byte [] b = new byte[pieces.length() / 20];
         bitfield = new Bitfield(Message.BITFIELD, b.length + 1, b);
+        requested = new Bitfield(Message.BITFIELD, b.length + 1, b);
     }
 
     public void cleanUp() {
@@ -247,6 +254,35 @@ public class Torrent extends Thread {
         }
     }
 
+    /*
+        Peer related methods ----------------------------------------------
+    */
+
+    public synchronized void piece(int index, int offset, byte [] block) {
+        /*
+            A peer has downloaded a block, write it to file.
+
+            TODO: Implement a file caching algorithm
+                  Also, need to check hash of pieces.
+        */
+        try {
+            file.seek((index * pieceLength) + offset);
+            file.write(block);
+            if(offset + block.length == getPieceLength()) {
+                bitfield.setBit(index);
+            }
+            left = "" + (Integer.parseInt(left) - block.length);
+            double percent = (Double.parseDouble(left) / totalLength) * 100;
+            percent = 100 - percent;
+            int intPercent = (int) percent;
+            System.out.print("\r" + intPercent + "%");
+            System.out.flush();
+        }
+        catch(IOException e) {
+            System.out.println("Could not write block to file.");
+        }
+    }
+
     public int getBlockSize() {
         /*
             The size of a block to download from the client.
@@ -260,28 +296,33 @@ public class Torrent extends Thread {
         return totalLength - ((int)(Math.pow(2, 14)) * (numberOfPieces - 1));
     }
 
-    public int getNextPieceIndex(Peer p) {
-        int current = pieceIndexes.get(p);
-        int next = current + 1;
-        if(!p.hasDownloaded(current)) {
-            return current;
-        }
-        else {
-            boolean duplicate = false;
-            do {
-                duplicate = false;
-                for(Peer peer : peers) {
-                    if(peer.isDownloading(next)) {
-                        duplicate = true;
-                        next++;
-                        break;
-                    }
+    public synchronized int getNextPieceIndex(Peer p) {
+        /*
+            Return the index of the next piece to request for p
+        */
+        for(int i = 0; i < requested.getBitfield().length; i++) {
+            if(!requested.bitSet(i)) {
+                // Haven't requested this piece.
+                // Can the peer download it?
+                if(p.canDownload(i)) {
+                    requested.setBit(i);
+                    return i;
                 }
-            } while(duplicate);
-            pieceIndexes.put(p, next);
-            return next;
+                else {
+                    System.out.println("Peer cannot download: " + i);
+                }
+            }
         }
+        return -1;
     }
+
+    /*
+        End of peer related methods -------------------------------------
+    */
+
+    /*
+        Getters & Setters ------------
+    */
 
     public String infoHash() {
         return hash;
@@ -320,30 +361,9 @@ public class Torrent extends Thread {
         return left.equals("0");
     }
 
-    public void piece(int index, int offset, byte [] block) {
-        /*
-            A peer has downloaded a block, write it to file.
-
-            TODO: Implement a file caching algorithm
-                  Also, need to check hash of pieces.
-        */
-        try {
-            file.seek((index * pieceLength) + offset);
-            file.write(block);
-            if(offset + block.length == getPieceLength()) {
-                bitfield.setBit(index);
-            }
-            left = "" + (Integer.parseInt(left) - block.length);
-            double percent = (Double.parseDouble(left) / totalLength) * 100;
-            percent = 100 - percent;
-            int intPercent = (int) percent;
-            System.out.print("\r" + intPercent + "%");
-            System.out.flush();
-        }
-        catch(IOException e) {
-            System.out.println("Could not write block to file.");
-        }
-    }
+    /*
+        End of Getters & Setters ---------
+    */
     
     public static void main(String [] args) {
         Torrent t = new Torrent(args[0]);

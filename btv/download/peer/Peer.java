@@ -47,8 +47,8 @@ public class Peer extends Thread {
     // don't send any more until we get the response.
     private boolean canSend = true;
 
-    // PieceIndex -> No.bytes downloaded
-    private HashMap<Integer, Integer> downloaded;
+    // PieceIndex -> No.bytes requested
+    private HashMap<Integer, Integer> requested;
     private int numOfPendingRequests = 0;
     private int currentPiece = -1;
 
@@ -63,10 +63,10 @@ public class Peer extends Thread {
         torrent = t;
         infoHash = torrent.infoHash();
         peerID = torrent.peerID();
-        downloaded = new HashMap<Integer, Integer>();
+        requested = new HashMap<Integer, Integer>();
 
         for(int i = 0; i < torrent.getNumberOfPieces(); i++) {
-            downloaded.put(i, 0);
+            requested.put(i, 0);
         }
     }
 
@@ -203,26 +203,42 @@ public class Peer extends Thread {
                 currentPiece = torrent.getNextPieceIndex(this);
             }
 
-            if(downloaded.get(currentPiece) == torrent.getPieceLength()) {
-                // Next piece.. Eventually we will have an algorithm
-                // to choose pieces.
-                currentPiece = torrent.getNextPieceIndex(this);
-            }
-            if(currentPiece == (torrent.getNumberOfPieces() - 1)) {
-                // Last piece
-                new Request(Message.REQUEST, 13, currentPiece, 
-                downloaded.get(currentPiece), 
-                torrent.getLastBlockSize()).send(out);
+            if(currentPiece == -1) {
+                // No piece to download, stop requesting.
+                // Something better here?
                 break;
             }
-            new Request(Message.REQUEST, 13, currentPiece, 
-                downloaded.get(currentPiece), 
-                torrent.getBlockSize()).send(out);
-            downloaded.put(currentPiece, downloaded.get(currentPiece)
-                         + torrent.getBlockSize());
-            numOfPendingRequests++;
+
+            if(requested.get(currentPiece) == torrent.getPieceLength()) {
+                currentPiece = torrent.getNextPieceIndex(this);
+            }
+
+            if(currentPiece == -1) {
+                break;
+            }
+
+            // Otherwise request next piece
+            requestNextPiece();
+            
         }
         canSend = false;
+    }
+
+    private void requestNextPiece() {
+        int blockSize = 0;
+        if(currentPiece == (torrent.getNumberOfPieces() - 1)) {
+                // Last piece
+            blockSize = torrent.getLastBlockSize();
+        }
+        else {
+            blockSize = torrent.getBlockSize();
+        }
+        new Request(Message.REQUEST, 13, currentPiece, 
+            requested.get(currentPiece), 
+            blockSize).send(out);
+
+        requested.put(currentPiece, requested.get(currentPiece) + blockSize);
+        numOfPendingRequests++;
     }
 
     private void connectAndSetUp() throws IOException {
@@ -260,8 +276,6 @@ public class Peer extends Thread {
 
         byte [] peerHandshake = receiveHandShake();
 
-        // Compare handshakes here
-        System.out.println(new String(peerHandshake));
         if(!handShakeOK(handshake, peerHandshake)) {
             /*
                 There is a problem with the handshake, we must
@@ -357,7 +371,7 @@ public class Peer extends Thread {
     }
 
     public boolean hasDownloaded(int i) {
-        return downloaded.get(i) == torrent.getPieceLength();
+        return requested.get(i) == torrent.getPieceLength();
     }
 
     public boolean isDownloading(int i) {

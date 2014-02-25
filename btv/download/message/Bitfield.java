@@ -22,6 +22,10 @@ public class Bitfield extends Message {
         for(int i = 0; i < s.length(); i += 2) {
             int n = Integer.parseInt(s.substring(i, i + 2), 16);
             String theByte = Integer.toBinaryString(n);
+            if(theByte.length() < 8) {
+                // Add leading 0
+                theByte = "0" + theByte;
+            }
             binary += theByte;
         }
 
@@ -44,5 +48,9 @@ public class Bitfield extends Message {
             Set bit at index i.
         */
         bitfield[i] = '1';
+    }
+
+    public String toString() {
+        return new String(bitfield);
     }
 }

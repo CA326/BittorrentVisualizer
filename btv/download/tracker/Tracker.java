@@ -27,7 +27,8 @@ public class Tracker {
         */
         String queries = "?info_hash=" + hash + "&peer_id=" + peerID + 
                         "&port=" + port + "&downloaded=" + downloaded 
-                        + "&uploaded=" + uploaded + "&left=" + left;
+                        + "&uploaded=" + uploaded + "&left=" + left +
+                        "&compact=1";
         request = tracker + queries;
     }
 
@@ -52,6 +53,7 @@ public class Tracker {
             System.out.println("Error contacting tracker.");
             e.printStackTrace();
         }
+        System.out.println(response.toString());
         return (Map) BDecoder.decode(response.toString());
     }
 }
