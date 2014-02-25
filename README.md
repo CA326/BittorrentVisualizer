@@ -31,3 +31,4 @@ After we have a stable implementation of the protocol we are going to incorporat
 #### 25th February 2014
 - BDecoding fails on some tracker responses.
 - Download sticks on last piece
+- Occasional out of memory errors in class Peer
