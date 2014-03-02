@@ -21,6 +21,7 @@ import btv.download.peer.Peer;
 import btv.download.tracker.Tracker;
 import btv.download.message.Message;
 import btv.download.message.Bitfield;
+import btv.download.message.Request;
 
 import java.util.*;
 import java.io.RandomAccessFile;
@@ -46,8 +47,7 @@ public class Torrent extends Thread {
     private ArrayList<Peer> peers;
     private RandomAccessFile file;
     private Bitfield bitfield;
-    private Bitfield requested; // Keep track of requested pieces.
-    private HashMap<Peer, Integer> pieceIndexes;
+    private HashMap<Request, Integer> requested;
 
     // Testing only
     private long startTime;
@@ -70,9 +70,10 @@ public class Torrent extends Thread {
         setUpFile();
         numberOfPieces = pieces.length() / 20;
         System.out.println("Pieces: " + numberOfPieces);
-        pieceIndexes = new HashMap<Peer, Integer>();
+        requested = new HashMap<Request, Integer>();
 
         initBitfield();
+        initRequested();
 
         hash = computeHash();
         peerID = generatePeerID();
@@ -118,7 +119,6 @@ public class Torrent extends Thread {
     public void addPeer(Peer p) {
         synchronized(peers) {
             peers.add(p);
-            pieceIndexes.put(p, 0);
         }
     }
 
@@ -158,7 +158,26 @@ public class Torrent extends Thread {
     private void initBitfield() {
         byte [] b = new byte[pieces.length() / 20];
         bitfield = new Bitfield(Message.BITFIELD, b.length + 1, b);
-        requested = new Bitfield(Message.BITFIELD, b.length + 1, b);
+    }
+
+    private void initRequested() {
+        int l = Integer.parseInt(left);
+        for(int i = 0; i < numberOfPieces; i++) {
+            int put = 0;
+            while(put < pieceLength) {
+                if(l < getBlockSize()) {
+                    requested.put(new Request(Message.REQUEST, 13, i, put, l), 0);
+                    put += l;
+                    l -= put;
+                    break;
+                }
+                else {
+                    requested.put(new Request(Message.REQUEST, 13, i, put, getBlockSize()), 0);
+                    put += getBlockSize();
+                    l -= getBlockSize();
+                }
+            }
+        }
     }
 
     public void cleanUp() {
@@ -216,9 +235,9 @@ public class Torrent extends Thread {
         int i=0;
         int j=0;
         while(i<len){
-            output[j++]='%';
-            output[j++]=s.charAt(i++);
-            output[j++]=s.charAt(i++);
+            output[j++] = '%';
+            output[j++] = s.charAt(i++);
+            output[j++] = s.charAt(i++);
         }
         return new String(output);
     }
@@ -276,6 +295,7 @@ public class Torrent extends Thread {
             percent = 100 - percent;
             int intPercent = (int) percent;
             System.out.print("\r" + intPercent + "%");
+            //System.out.println("Left: " + left);
             System.out.flush();
         }
         catch(IOException e) {
@@ -291,29 +311,18 @@ public class Torrent extends Thread {
         return (int) Math.pow(2, 14);
     }
 
-    public int getLastBlockSize() {
-        // Last block is irregular
-        return totalLength - ((int)(Math.pow(2, 14)) * (numberOfPieces - 1));
-    }
-
-    public synchronized int getNextPieceIndex(Peer p) {
-        /*
-            Return the index of the next piece to request for p
-        */
-        for(int i = 0; i < requested.getBitfield().length; i++) {
-            if(!requested.bitSet(i)) {
-                // Haven't requested this piece.
-                // Can the peer download it?
-                if(p.canDownload(i)) {
-                    requested.setBit(i);
-                    return i;
-                }
-                else {
-                    System.out.println("Peer cannot download: " + i);
+    public synchronized Request getNextRequest(Peer p) {
+        Set<Request> requests = requested.keySet();
+        for(Request r : requests) {
+            if(requested.get(r) != 1) {
+                if(p.canDownload(r.getIndex())) {
+                    requested.put(r, 1);
+                    return r;
                 }
             }
         }
-        return -1;
+
+        return null;
     }
 
     /*
@@ -344,8 +353,8 @@ public class Torrent extends Thread {
         return uploaded;
     }
 
-    public String left() {
-        return left;
+    public int left() {
+        return Integer.parseInt(left);
     }
 
     public int getNumberOfPieces() {

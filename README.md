@@ -32,3 +32,4 @@ After we have a stable implementation of the protocol we are going to incorporat
 - BDecoding fails on some tracker responses.
 - Download sticks on last piece
 - Occasional out of memory errors in class Peer
+- Very high CPU usage on large torrents (need better thread management)

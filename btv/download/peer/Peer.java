@@ -7,8 +7,7 @@
         Send pieces to the associated torrent to be written to the disk.
 
         TODO:
-            Need to take Bitfield into account, currently requesting pieces
-            without knowing if the peer has them or not.
+            A lot of work on efficiency needs to be done.
     Author: Stephan McLean
     Date: 6th February 2014
 */
@@ -134,9 +133,18 @@ public class Peer extends Thread {
                 catch(IOException e) {
                     System.out.println("Error reading peer message");
                 }
+
+                try {
+                    Thread.sleep(10);    
+                }
+                catch(InterruptedException e) {}
             }
             else {
                 sendPeerMessage();
+                try {
+                    Thread.sleep(10);    
+                }
+                catch(InterruptedException e) {}
             }
         }
     }
@@ -199,46 +207,16 @@ public class Peer extends Thread {
             Queue multiple requests to improve performance.
         */
         while(numOfPendingRequests < 5) {
-            if(currentPiece < 0) {
-                currentPiece = torrent.getNextPieceIndex(this);
+            Request r = torrent.getNextRequest(this);
+            if(r != null) {
+                r.send(out);
+                numOfPendingRequests++;
             }
-
-            if(currentPiece == -1) {
-                // No piece to download, stop requesting.
-                // Something better here?
-                break;
+            else {
+               break;
             }
-
-            if(requested.get(currentPiece) == torrent.getPieceLength()) {
-                currentPiece = torrent.getNextPieceIndex(this);
-            }
-
-            if(currentPiece == -1) {
-                break;
-            }
-
-            // Otherwise request next piece
-            requestNextPiece();
-            
         }
         canSend = false;
-    }
-
-    private void requestNextPiece() {
-        int blockSize = 0;
-        if(currentPiece == (torrent.getNumberOfPieces() - 1)) {
-                // Last piece
-            blockSize = torrent.getLastBlockSize();
-        }
-        else {
-            blockSize = torrent.getBlockSize();
-        }
-        new Request(Message.REQUEST, 13, currentPiece, 
-            requested.get(currentPiece), 
-            blockSize).send(out);
-
-        requested.put(currentPiece, requested.get(currentPiece) + blockSize);
-        numOfPendingRequests++;
     }
 
     private void connectAndSetUp() throws IOException {

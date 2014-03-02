@@ -37,4 +37,16 @@ public class Request extends Message {
                 + "Index: " + index + " Begin: " + begin + " BLength: " + 
                 blength;
     }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public int getOffset() {
+        return begin;
+    }
+
+    public int getBlockLength() {
+        return blength;
+    }
 }
