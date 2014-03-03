@@ -19,7 +19,7 @@ After we have a stable implementation of the protocol we are going to incorporat
 - ~~Model Messages as classes.~~
 - ~~Make class Peer a thread.~~
 - Come up with and implement a file caching algorithm.
-- Implement an end game strategy
+- ~~Implement an end game strategy~~ (Improve later.)
 - ~~Implement a piece choosing algorithm.~~ (Need to improve)
 - Refinement in all classes, a lot of the current code is very untidy and contains some bad practices (exceptions, preamble missing).
 - ~~Group classes in packages.~~
