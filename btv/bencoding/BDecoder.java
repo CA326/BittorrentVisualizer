@@ -13,12 +13,12 @@ import java.io.*;
 public class BDecoder {
 	private static String in = null;
 
-	public static Object decode(String data) {
+	public static Object decode(String data) throws BDecodingException {
 		in = data;
 		return readItem(readChar());
 	}
 
-	static String readString(int length) {
+	static String readString(int length) throws BDecodingException {
 		// Read a string from in given the length
 		String result = "";
 	
@@ -30,7 +30,7 @@ public class BDecoder {
 		return result;
 	}
 
-	static int readInt() {
+	static int readInt() throws BDecodingException {
 		// Read the int until we hit an "e"
 	
 		String intToParse = "";
@@ -44,7 +44,7 @@ public class BDecoder {
 		return Integer.parseInt(intToParse);
 	}
 
-	static ArrayList<Object> readList() {
+	static ArrayList<Object> readList() throws BDecodingException {
 		// Read a list of items from the file.
 		ArrayList<Object> items = new ArrayList<Object>();
 	
@@ -58,7 +58,7 @@ public class BDecoder {
 		return items;
 	}
 
-	static Map readDictionary() {
+	static Map readDictionary() throws BDecodingException {
 		Map m = new LinkedHashMap();
 		Object key, value;
 		char c = readChar();
@@ -77,7 +77,7 @@ public class BDecoder {
 	Helper methods ------------------------------
 
 	*/
-	static Object readItem(char c) {
+	static Object readItem(char c) throws BDecodingException {
 		/*
 			Return an appropriate item based on c having been read
 			from the file.
@@ -105,23 +105,26 @@ public class BDecoder {
 				Map map = readDictionary();
 				o = (Object) map;
 				break;
-			default:
-				// Need to throw an exception here -- 
-				System.out.println("Could not parse file.");	
-				System.exit(1);
+			default: 
+				throw new BDecodingException("Unable to process item: " + c);
 			}
 		}
 		return o;
 	}
 
-	static char readChar() {
+	static char readChar() throws BDecodingException {
 		// Remove and return next character from the data
-		char c = in.charAt(0);
-		in = in.substring(1, in.length());
-		return c;
+		if(in.length() > 0) {
+			char c = in.charAt(0);
+			in = in.substring(1, in.length());
+			return c;
+		}
+		else {
+			throw new BDecodingException("Unexpected end of file.");
+		}
 	}
 
-	static String getStringLength() {
+	static String getStringLength() throws BDecodingException {
 	
 	
 		String result = "";

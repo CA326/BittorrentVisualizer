@@ -16,10 +16,13 @@
 package btv.download;
 import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
+import btv.bencoding.BDecodingException;
 import btv.download.utils.SHA1;
 import btv.download.utils.TorrentFile;
 import btv.download.peer.Peer;
 import btv.download.tracker.Tracker;
+import btv.download.tracker.HTTPTracker;
+import btv.download.tracker.UDPTracker;
 import btv.download.message.Message;
 import btv.download.message.Bitfield;
 import btv.download.message.Request;
@@ -32,7 +35,6 @@ import java.io.File;
 import java.math.BigInteger;
 public class Torrent extends Thread {
     private Map metainfo, infoDict;
-    private String tracker; // Will have a list later.
     private String hash;
     private String basePeerID = "-BTV001-";
     private String peerID;
@@ -46,6 +48,7 @@ public class Torrent extends Thread {
     private String pieces; // SHA1 values of each piece.
     private int numberOfPieces;
     private ArrayList<Peer> peers;
+    private Tracker tracker;
     private Bitfield bitfield;
     private HashMap<Request, Integer> requested;
 
@@ -59,8 +62,12 @@ public class Torrent extends Thread {
 
     public Torrent(String fileName) {
 
-        metainfo = (Map) BDecoder.decode(readFile(fileName));
-        tracker = (String) metainfo.get("announce");
+        try {
+            metainfo = (Map) BDecoder.decode(readFile(fileName));
+        }
+        catch(BDecodingException e) {
+            e.printStackTrace();
+        }
         infoDict = (Map) metainfo.get("info");
         pieceLength = (int) infoDict.get("piece length");
         pieces = (String) infoDict.get("pieces");
@@ -154,10 +161,71 @@ public class Torrent extends Thread {
 
             TODO: Check for keys not in map.
         */
-        Tracker t = new Tracker(tracker, percentEncode(hash), peerID, port, downloaded,
-                                 uploaded, left);
-        Map trackerResponse = t.contact();
+        Map trackerResponse = null;
+        boolean validResponse = false;
+        int attempt = 0;
+        while(!validResponse && attempt < 3) {
+            try {
+                System.out.println("Contacting tracker, attempt: " + attempt);
+                trackerResponse = tracker.contact();
+                validResponse = true;
+            }
+            catch(BDecodingException e) {
+                attempt++;
+                e.printStackTrace();
+            }
+        }
 
+        /*
+            Still need to check for bad tracker response here.
+        */
+
+        parsePeers(trackerResponse);
+    }
+
+    public void parseTracker() {
+        /*
+            For now we are only dealing with HTTP trackers.
+            This method will search the meta-info file for a HTTP Tracker
+            and set it up.
+        */
+        String announce = (String) metainfo.get("announce");
+        if(announce.startsWith("http")) {
+            tracker = new HTTPTracker((String)metainfo.get("announce"), 
+                        percentEncode(hash), peerID, port, downloaded,
+                                 uploaded, left);
+        }
+        else {
+            if(metainfo.containsKey("announce-list")) {
+                ArrayList<ArrayList<String>> announceList = 
+                (ArrayList<ArrayList<String>>)metainfo.get("announce-list");
+
+                for(ArrayList<String> a : announceList) {
+                    if(a.get(0).startsWith("http")) { // Check for null here.
+                        tracker = new HTTPTracker(a.get(0), 
+                        percentEncode(hash), peerID, port, downloaded,
+                                 uploaded, left);
+                    }
+                }
+            }
+            // If no announce-list found we need to deal with that here.
+        }
+    }
+
+    public void addPeer(Peer p) {
+        synchronized(peers) {
+            peers.add(p);
+        }
+    }
+
+    public void removePeer(Peer p) {
+        synchronized(peers) {
+            System.out.println("Removing peer: " + p);
+            peers.remove(p);
+        }
+    }
+
+    private void parsePeers(Map trackerResponse) {
         // Need to deal with Map model here.
         String binaryPeer = (String) trackerResponse.get("peers");
         try {
@@ -175,25 +243,12 @@ public class Torrent extends Thread {
                 break;
             }
         }
-        
-        startPeers();
-    }
-
-    public void addPeer(Peer p) {
-        synchronized(peers) {
-            peers.add(p);
-        }
-    }
-
-    public void removePeer(Peer p) {
-        synchronized(peers) {
-            System.out.println("Removing peer: " + p);
-            peers.remove(p);
-        }
     }
 
     public void run() {
+        parseTracker();
         contactTracker();
+        startPeers();
         try {
             while(!isDownloaded()) {
                 Thread.sleep(1000);
@@ -279,9 +334,6 @@ public class Torrent extends Thread {
     private String computeHash() {
         /*
             Return the hash of the bencoded info dictionary.
-            TODO: Improve this.
-                  This method currently returns the percent encoded hash.
-                  Percent encoding should be done elsewhere.
         */
         String bencodedInfo = BEncoder.bencode(infoDict);
         String hex = null;
