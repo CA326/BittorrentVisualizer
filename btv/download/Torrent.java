@@ -17,6 +17,7 @@ package btv.download;
 import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
 import btv.download.utils.SHA1;
+import btv.download.utils.TorrentFile;
 import btv.download.peer.Peer;
 import btv.download.tracker.Tracker;
 import btv.download.message.Message;
@@ -45,29 +46,25 @@ public class Torrent extends Thread {
     private String pieces; // SHA1 values of each piece.
     private int numberOfPieces;
     private ArrayList<Peer> peers;
-    private RandomAccessFile file;
     private Bitfield bitfield;
     private HashMap<Request, Integer> requested;
+
+    // File related vars
+    private RandomAccessFile file;
+    private File tempFile;
+    private ArrayList<TorrentFile> torrentFiles;
 
     // Testing only
     private long startTime;
 
     public Torrent(String fileName) {
-        /*  
-            Parse the file. 
-            Contact the tracker and print out the peer list.
 
-            Need to handle a bad file better here.
-        */
         metainfo = (Map) BDecoder.decode(readFile(fileName));
         tracker = (String) metainfo.get("announce");
         infoDict = (Map) metainfo.get("info");
-        left = "" + infoDict.get("length");
-        totalLength = Integer.parseInt(left);
         pieceLength = (int) infoDict.get("piece length");
         pieces = (String) infoDict.get("pieces");
-        name = (String) infoDict.get("name");
-        setUpFile();
+        setUpFiles();
         numberOfPieces = pieces.length() / 20;
         System.out.println("Pieces: " + numberOfPieces);
         requested = new HashMap<Request, Integer>();
@@ -81,6 +78,72 @@ public class Torrent extends Thread {
 
         // Start timer
         startTime = System.currentTimeMillis();
+    }
+
+    private void setUpFiles() {
+        torrentFiles = new ArrayList<TorrentFile>();
+        String tempFilePath;
+
+        if(infoDict.containsKey("files")) {
+            System.out.println("Multi-file mode");
+            ArrayList<Map> files = (ArrayList<Map>) infoDict.get("files");
+            String name = (String) infoDict.get("name");
+            
+            tempFilePath = name + "/" + name + ".temp";
+
+            for(Map map : files) {
+                ArrayList<String> path = (ArrayList<String>) map.get("path");
+                int fileLen = (int) map.get("length");
+                totalLength += fileLen;
+                String p = name;
+                for(String s : path) {
+                    p += "/" + s;
+                }
+                torrentFiles.add(new TorrentFile(p, fileLen));
+            }
+        }
+        else {
+            System.out.println("Single file mode.");
+            String name = (String)infoDict.get("name");
+            totalLength = (int)infoDict.get("length");
+            tempFilePath = name + ".temp";
+            torrentFiles.add(new TorrentFile(name, totalLength));
+        }
+
+        left = "" + totalLength;
+        createTempFile(tempFilePath);
+    }
+
+    private void createTempFile(String tempFilePath) {
+        /*
+            We will use a tempory file to write to while downloading
+            which will be split into all the files associated with the 
+            Torrent at the end of the download
+        */
+        try {
+            tempFile = new File(tempFilePath);
+            if(tempFile.getParentFile() != null) {
+                tempFile.getParentFile().mkdirs();
+            }
+            tempFile.createNewFile();
+            file = new RandomAccessFile(tempFile, "rw"); // This is what we write to.
+        }
+        catch(IOException e) {
+            System.out.println("Could not create temporary file.");
+        }
+    }
+
+    private void deleteTempFile() {
+        /*
+            Delete the temporary file at the end of the download.
+        */
+        try {
+            file.close();
+            tempFile.delete();
+        }
+        catch(IOException e) {
+            System.out.println("Could not delete temporary file.");
+        }
     }
 
     public void contactTracker() {
@@ -187,13 +250,18 @@ public class Torrent extends Thread {
             }
         }
 
-        try {
-            file.close();
-        }
-        catch(Exception e) {
-            System.out.println("Could not close the file.");
+        int start = 0;
+        // Now finalise the files.
+        for(TorrentFile t : torrentFiles) {
+            t.write(file, start);
+            start += t.getLength();
         }
 
+        deleteTempFile();
+        //try {
+          //  file.close();
+        //}
+        //catch(IOException e) {}
     }
 
     private String generatePeerID() {
