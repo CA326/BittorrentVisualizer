@@ -13,7 +13,7 @@ After we have a stable implementation of the protocol we are going to incorporat
 - Writes downloaded pieces to disk.
 
 ###TODO:
-- Need to deal with all possibilities in the meta-info file e.g multiple file torrents.
+- ~~Need to deal with all possibilities in the meta-info file e.g multiple file torrents.~~ (Done - 3rd March 2014)
 - Make class Tracker a thread so we can send stats and receive updates at a regular interval.
 - Deal with UDP Trackers
 - ~~Model Messages as classes.~~
@@ -33,3 +33,6 @@ After we have a stable implementation of the protocol we are going to incorporat
 - Download sticks on last piece
 - Occasional out of memory errors in class Peer
 - Very high CPU usage on large torrents (need better thread management)
+
+#### 3rd March 2014
+- Splitting the temporary download file into proper files is slow. We are also using a temporary file for single file torrents which is unnecessary, we will remove this in the future.
