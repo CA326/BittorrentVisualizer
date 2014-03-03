@@ -433,11 +433,11 @@ public class Torrent extends Thread {
             double percent = (Double.parseDouble(left) / totalLength) * 100;
             percent = 100 - percent;
             percentDownloaded = (int) percent;
-            //System.out.print("\r" + percentDownloaded + "%");
-            System.out.println("Left: " + left);
-            //System.out.flush();
+            System.out.print("\r" + percentDownloaded + "%");
+            //System.out.println("Left: " + left);
+            System.out.flush();
 
-            cancelPiece(p);
+            cancelPiece(p); // Should only cancel if percentDownloaded >= 99?
         }
         catch(IOException e) {
             System.out.println("Could not write block to file.");

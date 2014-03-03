@@ -351,7 +351,6 @@ public class Peer extends Thread {
     }
 
     public void cancel(Request r) {
-        System.out.println("Peer: " + this + " cancelling a request");
         if(requested.contains(r)) {
             new Cancel(Message.CANCEL, 13, r.getIndex(), r.getOffset(),
                  r.getBlockLength()).send(out);
