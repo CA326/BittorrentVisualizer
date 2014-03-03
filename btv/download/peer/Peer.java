@@ -19,7 +19,7 @@ import btv.download.message.*;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import javax.xml.bind.DatatypeConverter;
@@ -46,12 +46,11 @@ public class Peer extends Thread {
     // don't send any more until we get the response.
     private boolean canSend = true;
 
-    // PieceIndex -> No.bytes requested
-    private HashMap<Integer, Integer> requested;
     private int numOfPendingRequests = 0;
     private int currentPiece = -1;
 
     private Bitfield bitfield;
+    private HashSet<Request> requested;
 
     public Peer(String ip1, int port1, Torrent t) {
         /*
@@ -62,15 +61,12 @@ public class Peer extends Thread {
         torrent = t;
         infoHash = torrent.infoHash();
         peerID = torrent.peerID();
-        requested = new HashMap<Integer, Integer>();
-
-        for(int i = 0; i < torrent.getNumberOfPieces(); i++) {
-            requested.put(i, 0);
-        }
+        requested = new HashSet<Request>();
     }
 
     public Peer(Socket s1) {
         s = s1;
+        requested = new HashSet<Request>();
     }
 
     public static Peer parse(String bytes, Torrent t) {
@@ -209,7 +205,9 @@ public class Peer extends Thread {
         while(numOfPendingRequests < 5) {
             Request r = torrent.getNextRequest(this);
             if(r != null) {
+                System.out.println("Peer: " + this + " Requesting: " + r);
                 r.send(out);
+                requested.add(r);
                 numOfPendingRequests++;
             }
             else {
@@ -348,12 +346,16 @@ public class Peer extends Thread {
         return bitfield.bitSet(i);
     }
 
-    public boolean hasDownloaded(int i) {
-        return requested.get(i) == torrent.getPieceLength();
-    }
-
     public boolean isDownloading(int i) {
         return currentPiece == i;
+    }
+
+    public void cancel(Request r) {
+        System.out.println("Peer: " + this + " cancelling a request");
+        if(requested.contains(r)) {
+            new Cancel(Message.CANCEL, 13, r.getIndex(), r.getOffset(),
+                 r.getBlockLength()).send(out);
+        }
     }
 
     /*
@@ -393,12 +395,9 @@ public class Peer extends Thread {
 
     private void piece(Message m) {
         Piece p = (Piece) m;
-        int index = p.getIndex();
-        int offset = p.getOffset();
-        byte [] block = p.getBlock();
         numOfPendingRequests--;
         if(numOfPendingRequests == 0)
             canSend = true;
-        torrent.piece(index, offset, block);
+        torrent.piece(p);
     }
 }

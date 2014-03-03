@@ -38,6 +38,11 @@ public class Request extends Message {
                 blength;
     }
 
+    public boolean equals(Object obj) {
+        Request r = (Request) obj;
+        return index == r.getIndex() && begin == r.getOffset();
+    }
+
     public int getIndex() {
         return index;
     }

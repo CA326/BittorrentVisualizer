@@ -26,6 +26,7 @@ import btv.download.tracker.UDPTracker;
 import btv.download.message.Message;
 import btv.download.message.Bitfield;
 import btv.download.message.Request;
+import btv.download.message.Piece;
 
 import java.util.*;
 import java.io.RandomAccessFile;
@@ -51,6 +52,7 @@ public class Torrent extends Thread {
     private Tracker tracker;
     private Bitfield bitfield;
     private HashMap<Request, Integer> requested;
+    private int percentDownloaded;
 
     // File related vars
     private RandomAccessFile file;
@@ -393,11 +395,24 @@ public class Torrent extends Thread {
         }
     }
 
+    private void cancelPiece(Piece p) {
+        /*
+            During end game we send requests for pieces to more than one peer.
+            Once we have received the piece we need to cancel the other requests.
+        */
+        Request toCancel = new Request(Message.REQUEST, 13, p.getIndex()
+                    , p.getOffset(), p.getBlock().length);
+
+        for(Peer peer : peers) {
+            peer.cancel(toCancel);
+        }
+    }
+
     /*
         Peer related methods ----------------------------------------------
     */
 
-    public synchronized void piece(int index, int offset, byte [] block) {
+    public synchronized void piece(Piece p) {
         /*
             A peer has downloaded a block, write it to file.
 
@@ -405,6 +420,10 @@ public class Torrent extends Thread {
                   Also, need to check hash of pieces.
         */
         try {
+            int index = p.getIndex();
+            int offset = p.getOffset();
+            byte [] block = p.getBlock();
+
             file.seek((index * pieceLength) + offset);
             file.write(block);
             if(offset + block.length == getPieceLength()) {
@@ -413,10 +432,12 @@ public class Torrent extends Thread {
             left = "" + (Integer.parseInt(left) - block.length);
             double percent = (Double.parseDouble(left) / totalLength) * 100;
             percent = 100 - percent;
-            int intPercent = (int) percent;
-            System.out.print("\r" + intPercent + "%");
-            //System.out.println("Left: " + left);
-            System.out.flush();
+            percentDownloaded = (int) percent;
+            //System.out.print("\r" + percentDownloaded + "%");
+            System.out.println("Left: " + left);
+            //System.out.flush();
+
+            cancelPiece(p);
         }
         catch(IOException e) {
             System.out.println("Could not write block to file.");
@@ -436,7 +457,9 @@ public class Torrent extends Thread {
         for(Request r : requests) {
             if(requested.get(r) != 1) {
                 if(p.canDownload(r.getIndex())) {
-                    requested.put(r, 1);
+                    // Don't set a piece as requested if we are in end game.
+                    if(percentDownloaded < 99)
+                        requested.put(r, 1);
                     return r;
                 }
             }
