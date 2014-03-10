@@ -75,7 +75,6 @@ public class Torrent extends Thread {
         pieces = (String) infoDict.get("pieces");
         setUpFiles();
         numberOfPieces = pieces.length() / 20;
-        System.out.println("Pieces: " + numberOfPieces);
         requested = new HashMap<Request, Integer>();
 
         initBitfield();
@@ -94,7 +93,6 @@ public class Torrent extends Thread {
         String tempFilePath;
 
         if(infoDict.containsKey("files")) {
-            System.out.println("Multi-file mode");
             ArrayList<Map> files = (ArrayList<Map>) infoDict.get("files");
             String name = (String) infoDict.get("name");
             
@@ -112,7 +110,6 @@ public class Torrent extends Thread {
             }
         }
         else {
-            System.out.println("Single file mode.");
             String name = (String)infoDict.get("name");
             totalLength = (int)infoDict.get("length");
             tempFilePath = name + ".temp";
@@ -168,7 +165,6 @@ public class Torrent extends Thread {
         int attempt = 0;
         while(!validResponse && attempt < 3) {
             try {
-                System.out.println("Contacting tracker, attempt: " + attempt);
                 trackerResponse = tracker.contact();
                 validResponse = true;
             }
@@ -219,7 +215,6 @@ public class Torrent extends Thread {
     }
 
     public synchronized void removePeer(Peer p) {
-        System.out.println("Removing peer: " + p);
         peers.remove(p);
 
         // Need to stop threads here??
@@ -313,10 +308,6 @@ public class Torrent extends Thread {
         }
 
         deleteTempFile();
-        //try {
-          //  file.close();
-        //}
-        //catch(IOException e) {}
     }
 
     private String generatePeerID() {
@@ -431,9 +422,6 @@ public class Torrent extends Thread {
             double percent = (Double.parseDouble(left) / totalLength) * 100;
             percent = 100 - percent;
             percentDownloaded = (int) percent;
-            System.out.print("\r" + percentDownloaded + "%");
-            //System.out.println("Left: " + left);
-            System.out.flush();
 
             cancelPiece(p); // Should only cancel if percentDownloaded >= 99?
         }
@@ -511,9 +499,25 @@ public class Torrent extends Thread {
         return Integer.parseInt(left) <= 0;
     }
 
+    public String toString() {
+        return hash + " " + percentDownloaded;
+    }
+
     /*
         End of Getters & Setters ---------
     */
+
+    /*
+        Methods to be called by the download manager.
+    */
+
+    public void pause() {
+
+    }
+
+    public void stopDownload() {
+
+    }
     
     public static void main(String [] args) {
         Torrent t = new Torrent(args[0]);

@@ -13,7 +13,7 @@
 */
 
 package btv.download.peer;
-import btv.download.Torrent;
+import btv.download.torrent.Torrent;
 import btv.download.message.*;
 
 import java.io.DataInputStream;
@@ -101,12 +101,10 @@ public class Peer extends Thread {
             This method handles communication with the peer.
             Here we will request pieces, and respond to messages received.
         */
-        System.out.println("Peer: " + this + " starting");
         try {
             connectAndSetUp();
         }
         catch(IOException e) {
-            System.out.println("Could not connect to peer");
             torrent.removePeer(this);
             return;
         }
@@ -118,7 +116,7 @@ public class Peer extends Thread {
                 available = in.available();
             }   
             catch(IOException e) {
-                System.out.println("Error communicating with peer: " + this);
+                //System.out.println("Error communicating with peer: " + this);
             }
 
             if(available > 0) {
@@ -127,7 +125,7 @@ public class Peer extends Thread {
                     readMessage();
                 }
                 catch(IOException e) {
-                    System.out.println("Error reading peer message");
+                    //System.out.println("Error reading peer message");
                 }
 
                 try {
@@ -205,7 +203,6 @@ public class Peer extends Thread {
         while(numOfPendingRequests < 5) {
             Request r = torrent.getNextRequest(this);
             if(r != null) {
-                System.out.println("Peer: " + this + " Requesting: " + r);
                 r.send(out);
                 requested.add(r);
                 numOfPendingRequests++;

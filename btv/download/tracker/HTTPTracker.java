@@ -51,7 +51,6 @@ public class HTTPTracker extends Tracker {
             System.out.println("Error contacting tracker.");
             e.printStackTrace();
         }
-        System.out.println(response.toString());
         return (Map) BDecoder.decode(response.toString());
     }
 }

@@ -23,7 +23,6 @@ public class TorrentFile {
 		/*
 			TODO: Take seek into account here.
 		*/
-		System.out.println("Writing file: " + path + " Len: " + length);
 		try {
 			File f = new File(path);
 			if(f.getParentFile() != null)
