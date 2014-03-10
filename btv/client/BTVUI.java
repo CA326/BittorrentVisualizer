@@ -1,3 +1,11 @@
+/*Author: Kevin Sweeney
+
+Date: 10th March 2014
+
+Basic Interface Code
+
+*/
+
 package btv.client;
 
 import java.awt.BorderLayout;
