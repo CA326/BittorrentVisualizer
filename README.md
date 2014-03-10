@@ -11,6 +11,7 @@ After we have a stable implementation of the protocol we are going to incorporat
 - Requests pieces from peers.
 - Parses peer messages.
 - Writes downloaded pieces to disk.
+- Basic CLI implemented which can download multiple torrents. (very rough.)
 
 ###TODO:
 - ~~Need to deal with all possibilities in the meta-info file e.g multiple file torrents.~~ (Done - 3rd March 2014)
@@ -37,3 +38,6 @@ After we have a stable implementation of the protocol we are going to incorporat
 
 #### 3rd March 2014
 - Splitting the temporary download file into proper files is slow. We are also using a temporary file for single file torrents which is unnecessary, we will remove this in the future.
+
+#### 10th March 2014
+- Some concurrency issues when downloading multiple torrents. 
