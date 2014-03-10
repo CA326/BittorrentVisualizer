@@ -13,6 +13,9 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.*;
+import javax.swing.filechooser.FileFilter;
+import java.io.File;
+
 
 public class BTVUI extends JFrame {
     
@@ -23,6 +26,9 @@ public class BTVUI extends JFrame {
     private JButton start, pause, stop, remove;
     private JList list;
     private DefaultListModel<String> listModel;
+    private JMenuBar menuBar;
+    private JMenu menu;
+    private JMenuItem menuItem;
 
 
 
@@ -32,6 +38,16 @@ public class BTVUI extends JFrame {
     }
 
     public final void initUI() {
+
+        menuBar = new JMenuBar();
+        menu = new JMenu("File");
+        menuBar.add(menu);
+        menuItem = new JMenuItem("Add");
+        menuItem.addActionListener(new MenuListener(this));
+        menu.add(menuItem);
+        menuBar.add(menu);
+        setJMenuBar(menuBar);
+
 
 		basicPanel = new JPanel();
 		basicPanel.setLayout(new BoxLayout(basicPanel, BoxLayout.Y_AXIS));
@@ -77,21 +93,58 @@ public class BTVUI extends JFrame {
         bottomPanel.setLayout(new BorderLayout());
         bottomPanel.add(list);
         basicPanel.add(bottomPanel, BorderLayout.SOUTH);
+
+
     }
 
     class ButtonListener implements ActionListener {
 
         public void actionPerformed(ActionEvent e) {
             JButton o = (JButton) e.getSource();
+            int [] selected = list.getSelectedIndices();
+            for(int i = 0; i < selected.length; i++) {
+                System.out.println(selected[i]);
+            }
             
-                if(o == start)
-                    System.out.println("Start button!");
-                else if(o ==stop)
-                    System.out.println("stop button!");
-                else if(o == pause)
-                    System.out.println("pause button!");
-                else if(o == remove)
-                    System.out.println("remove button!");
+
+            if(o == start)
+                System.out.println("Start button!");
+            else if(o ==stop)
+                System.out.println("stop button!");
+            else if(o == pause)
+                System.out.println("pause button!");
+            else if(o == remove)
+                System.out.println("remove button!");
+        }
+    }
+
+    class MenuListener implements ActionListener {
+        private JFrame parent;
+
+        public MenuListener(JFrame j) {
+            parent = j;
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            JFileChooser chooser = new JFileChooser();
+            chooser.addChoosableFileFilter(new FileFilter() {
+                
+                public boolean accept(File f) {
+                    return f.getName().endsWith(".torrent");
+                }
+
+                public String getDescription() {
+                    return "Torrent files";
+                }
+            });
+
+            int returnValue = chooser.showOpenDialog(parent);
+            if(returnValue == JFileChooser.APPROVE_OPTION) {
+                System.out.println(chooser.getSelectedFile().getName());
+            }
+            else {
+                System.out.println("No file chosen.");
+            }
         }
     }
 
