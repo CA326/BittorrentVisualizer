@@ -11,27 +11,27 @@ package btv.event.torrent;
 import java.util.EventObject;
 
 public class TorrentEvent extends EventObject {
-	private String hash;
+	private String name;
 	private int downloaded;
 	private int numberOfConnections;
 
-	public TorrentEvent(Object source, String h, int d, int numConnections) {
+	public TorrentEvent(Object source, String n, int d, int numConnections) {
 		super(source);
-		hash = h;
+		name = n;
 		downloaded = d;
 		numberOfConnections = numConnections;
 	}
 
-	public void setHash(String h) {
-		hash = h;
+	public void setName(String n) {
+		name = n;
 	}
 
 	public void setDownloaded(int d) {
 		downloaded = d;
 	}
 
-	public String getHash() {
-		return hash;
+	public String getName() {
+		return name;
 	}
 
 	public int getDownloaded() {
@@ -39,6 +39,6 @@ public class TorrentEvent extends EventObject {
 	}
 
 	public String toString() {
-		return hash + " " + downloaded + " Connections: " + numberOfConnections;
+		return name + " " + downloaded + " Connections: " + numberOfConnections;
 	}
 }
