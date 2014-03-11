@@ -12,13 +12,16 @@
 package btv.download;
 
 import btv.download.torrent.Torrent;
-import java.util.ArrayList;
+import btv.event.torrent.TorrentListener;
+
+import java.util.HashMap;
+import java.util.Set;
 
 public class DLManager {
-	private ArrayList<Torrent> downloads;
+	private HashMap<String, Torrent> downloads;
 
 	public DLManager() {
-		downloads = new ArrayList<Torrent>();
+		downloads = new HashMap<String, Torrent>();
 	}
 
 	public String add(String fileName) {
@@ -30,7 +33,7 @@ public class DLManager {
 		*/
 		Torrent t = new Torrent(fileName);
 		String hash = t.infoHash();
-		downloads.add(t);
+		downloads.put(hash, t);
 		return hash;
 	}
 
@@ -38,11 +41,8 @@ public class DLManager {
 		/*
 			Start the download with the appropriate hash
 		*/
-		for(Torrent t : downloads) {
-			if(t.infoHash().equals(hash)) {
-				t.start();
-				break;
-			}
+		if(downloads.containsKey(hash)) {
+			downloads.get(hash).start();
 		}
 	}
 
@@ -59,23 +59,25 @@ public class DLManager {
 	}
 
 	public Torrent get(String hash) {
-		for(Torrent t : downloads) {
-			if(t.infoHash().equals(hash)) {
-				return t;
-			}
-		}
-		return null;
+		return downloads.get(hash);
 	}
 
 	public boolean downloadsFinished() {
 		boolean result = true;
-		for(Torrent t : downloads) {
-			if(!t.isDownloaded()) {
+		Set<String> keys = downloads.keySet();
+		for(String s : keys) {
+			if(!downloads.get(s).isDownloaded()) {
 				result = false;
 			}
 		}
 
 		return result;
+	}
+
+	public void addTorrentListener(TorrentListener t, String hash) {
+		if(downloads.containsKey(hash)) {
+			downloads.get(hash).addTorrentListener(t);
+		}
 	}
 
 }

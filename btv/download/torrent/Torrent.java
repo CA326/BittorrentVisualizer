@@ -14,6 +14,7 @@
 */
 
 package btv.download.torrent;
+
 import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
 import btv.bencoding.BDecodingException;
@@ -27,6 +28,8 @@ import btv.download.message.Message;
 import btv.download.message.Bitfield;
 import btv.download.message.Request;
 import btv.download.message.Piece;
+import btv.event.torrent.TorrentListener;
+import btv.event.torrent.TorrentEvent;
 
 import java.util.*;
 import java.io.RandomAccessFile;
@@ -62,6 +65,10 @@ public class Torrent extends Thread {
     // Testing only
     private long startTime;
 
+    // Event handlers
+    private ArrayList<TorrentListener> listeners;
+    private EventRelayer relayer;
+
     public Torrent(String fileName) {
 
         try {
@@ -83,6 +90,10 @@ public class Torrent extends Thread {
         hash = computeHash();
         peerID = generatePeerID();
         peers = new ArrayList<Peer>();
+
+        listeners = new ArrayList<TorrentListener>();
+        relayer = new EventRelayer(this);
+        relayer.start();
 
         // Start timer
         startTime = System.currentTimeMillis();
@@ -308,6 +319,13 @@ public class Torrent extends Thread {
         }
 
         deleteTempFile();
+        try {
+            relayer.interrupt();
+            relayer.join();
+        }
+        catch(InterruptedException e) {
+            System.out.println("Could not end Relayer");
+        }
     }
 
     private String generatePeerID() {
@@ -373,15 +391,6 @@ public class Torrent extends Thread {
             System.out.println("Error reading metainfo file.");
         }
         return builder.toString();
-    }
-
-    private void setUpFile() {
-        try {
-            file = new RandomAccessFile(new File(name), "rw");
-        }
-        catch(IOException e) {
-            System.out.println("Could not create file: " + name);
-        }
     }
 
     private void cancelPiece(Piece p) {
@@ -478,6 +487,10 @@ public class Torrent extends Thread {
         return downloaded;
     }
 
+    public int percentDownloaded() {
+        return percentDownloaded;
+    }
+
     public String uploaded() {
         return uploaded;
     }
@@ -499,6 +512,12 @@ public class Torrent extends Thread {
         return Integer.parseInt(left) <= 0;
     }
 
+    public int numberOfConnections() {
+        synchronized(peers) {
+            return peers.size();
+        }
+    }
+
     public String toString() {
         return hash + " " + percentDownloaded;
     }
@@ -517,6 +536,44 @@ public class Torrent extends Thread {
 
     public void stopDownload() {
 
+    }
+
+    public void addTorrentListener(TorrentListener t) {
+        listeners.add(t);
+    }
+
+    /*
+        End of download manager methods -------------------
+    */
+
+    /*
+        A small class to relay events to our listeners.
+    */
+    private class EventRelayer extends Thread {
+        private Torrent torrent;
+        private boolean canRun = true;
+
+        public EventRelayer(Torrent t) {
+            torrent = t;
+        }
+
+        public void run() {
+            while(canRun) {
+                try {
+                    // Send a TorrentEvent to every listener
+                    TorrentEvent event = new TorrentEvent(torrent, 
+                    torrent.infoHash(), torrent.percentDownloaded(), 
+                    torrent.numberOfConnections());
+                    for(TorrentListener t : listeners) {
+                        t.handleTorrentEvent(event);
+                    }
+                    Thread.sleep(5000);
+                }
+                catch(InterruptedException e) {
+                    canRun = false;
+                }
+            }
+        }
     }
     
     public static void main(String [] args) {

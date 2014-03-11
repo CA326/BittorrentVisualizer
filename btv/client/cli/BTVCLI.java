@@ -9,6 +9,9 @@
 package btv.client.cli;
 
 import btv.download.DLManager;
+import btv.event.torrent.TorrentEvent;
+import btv.event.torrent.TorrentListener;
+
 import java.util.*;
 
 public class BTVCLI {
@@ -24,6 +27,7 @@ public class BTVCLI {
 	public void run() {
 		Set<Integer> keys = torrents.keySet();
 		for(Integer index : keys) {
+			d.addTorrentListener(new MyTorrentListener(), torrents.get(index));
 			d.start(torrents.get(index));
 		}
 
@@ -32,10 +36,8 @@ public class BTVCLI {
 			try {
 				Thread.sleep(5000);
 			}
-			catch(Exception e) {}
-
-			for(int i = 0; i < numTorrents; i++) {
-				System.out.println(d.get(torrents.get(i)));
+			catch(InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -43,6 +45,12 @@ public class BTVCLI {
 	public void addTorrent(String fileName) {
 		torrents.put(numTorrents, d.add(fileName));
 		numTorrents++;
+	}
+
+	class MyTorrentListener implements TorrentListener {
+		public void handleTorrentEvent(TorrentEvent e) {
+			System.out.println(e);
+		}
 	}
 
 	public static void main(String [] args) {
