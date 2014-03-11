@@ -38,6 +38,10 @@ public class TorrentEvent extends EventObject {
 		return downloaded;
 	}
 
+	public int getConnections() {
+		return numberOfConnections;
+	}
+
 	public String toString() {
 		return name + " " + downloaded + " Connections: " + numberOfConnections;
 	}
