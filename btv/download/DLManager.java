@@ -27,39 +27,39 @@ public class DLManager {
 	public String add(String fileName) {
 		/*
 			Given a fileName add this torrent
-			and return its SHA1 hash which the client can use to
+			and return its name which the client can use to
 			add, pause, stop or remove the torrent later.
 
 		*/
 		Torrent t = new Torrent(fileName);
-		String hash = t.infoHash();
-		downloads.put(hash, t);
-		return hash;
+		String name = t.name();
+		downloads.put(name, t);
+		return name;
 	}
 
-	public void start(String hash) {
+	public void start(String name) {
 		/*
-			Start the download with the appropriate hash
+			Start the download with the appropriate name
 		*/
-		if(downloads.containsKey(hash)) {
-			downloads.get(hash).start();
+		if(downloads.containsKey(name)) {
+			downloads.get(name).start();
 		}
 	}
 
-	public void pause(String hash) {
+	public void pause(String name) {
 		/*
-			Pause the download with the appropriate hash
+			Pause the download with the appropriate name
 		*/
 	}
 
-	public void stop(String hash) {
+	public void stop(String name) {
 		/*
-			Stop the download with the appropriate hash.
+			Stop the download with the appropriate name.
 		*/
 	}
 
-	public Torrent get(String hash) {
-		return downloads.get(hash);
+	public Torrent get(String name) {
+		return downloads.get(name);
 	}
 
 	public boolean downloadsFinished() {
@@ -74,9 +74,9 @@ public class DLManager {
 		return result;
 	}
 
-	public void addTorrentListener(TorrentListener t, String hash) {
-		if(downloads.containsKey(hash)) {
-			downloads.get(hash).addTorrentListener(t);
+	public void addTorrentListener(TorrentListener t, String name) {
+		if(downloads.containsKey(name)) {
+			downloads.get(name).addTorrentListener(t);
 		}
 	}
 

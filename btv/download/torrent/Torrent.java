@@ -93,7 +93,6 @@ public class Torrent extends Thread {
 
         listeners = new ArrayList<TorrentListener>();
         relayer = new EventRelayer(this);
-        relayer.start();
 
         // Start timer
         startTime = System.currentTimeMillis();
@@ -105,7 +104,7 @@ public class Torrent extends Thread {
 
         if(infoDict.containsKey("files")) {
             ArrayList<Map> files = (ArrayList<Map>) infoDict.get("files");
-            String name = (String) infoDict.get("name");
+            name = (String) infoDict.get("name");
             
             tempFilePath = name + "/" + name + ".temp";
 
@@ -121,7 +120,7 @@ public class Torrent extends Thread {
             }
         }
         else {
-            String name = (String)infoDict.get("name");
+            name = (String)infoDict.get("name");
             totalLength = (int)infoDict.get("length");
             tempFilePath = name + ".temp";
             torrentFiles.add(new TorrentFile(name, totalLength));
@@ -221,14 +220,16 @@ public class Torrent extends Thread {
         }
     }
 
-    public synchronized void addPeer(Peer p) {
-        peers.add(p);
+    public void addPeer(Peer p) {
+        synchronized(peers) {
+            peers.add(p);
+        }
     }
 
-    public synchronized void removePeer(Peer p) {
-        peers.remove(p);
-
-        // Need to stop threads here??
+    public void removePeer(Peer p) {
+        synchronized(peers) {
+            peers.remove(p);
+        }
     }
 
     private void parsePeers(Map trackerResponse) {
@@ -255,6 +256,7 @@ public class Torrent extends Thread {
         parseTracker();
         contactTracker();
         startPeers();
+        relayer.start();
         try {
             while(!isDownloaded()) {
                 Thread.sleep(1000);
@@ -475,6 +477,10 @@ public class Torrent extends Thread {
         return hash;
     }
 
+    public String name() {
+        return name;
+    }
+
     public String peerID() {
         return peerID;
     }
@@ -562,7 +568,7 @@ public class Torrent extends Thread {
                 try {
                     // Send a TorrentEvent to every listener
                     TorrentEvent event = new TorrentEvent(torrent, 
-                    torrent.infoHash(), torrent.percentDownloaded(), 
+                    torrent.name(), torrent.percentDownloaded(), 
                     torrent.numberOfConnections());
                     for(TorrentListener t : listeners) {
                         t.handleTorrentEvent(event);
