@@ -7,9 +7,14 @@ Basic Interface Code
 */
 
 package btv.client;
+import btv.download.DLManager;
+import btv.event.torrent.TorrentEvent;
+import btv.event.torrent.TorrentListener;
 
+import java.util.HashMap;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.*;
@@ -18,14 +23,23 @@ import java.io.File;
 
 
 public class BTVUI extends JFrame {
+
+
+    private DLManager downloadManager;
+    private HashMap<String, Integer> torrents;
+    private int numTorrents = 0;
     
 	//panels
 	private JPanel basicPanel, topPanel, bottomPanel;
 
     // Components
     private JButton start, pause, stop, remove;
-    private JList list;
-    private DefaultListModel<String> listModel;
+    
+    private JList name, downloaded, connections;
+    private DefaultListModel<String> nameListModel; 
+    private DefaultListModel<Integer> downloadedModel, connectionModel;
+
+
     private JMenuBar menuBar;
     private JMenu menu;
     private JMenuItem menuItem;
@@ -34,6 +48,8 @@ public class BTVUI extends JFrame {
 
     public BTVUI() {
         super("BTV");
+        torrents = new HashMap<String, Integer>();
+        downloadManager = new DLManager();
         initUI();
     }
 
@@ -83,32 +99,52 @@ public class BTVUI extends JFrame {
 
         // Set bottom panel and list.
         bottomPanel = new JPanel();
-        listModel = new DefaultListModel<String>();
-        listModel.addElement("Item 1");
-        listModel.addElement("Item 2");
-        listModel.addElement("Item 3");
-        listModel.addElement("Item 4");
-        list = new JList();
-        list.setModel(listModel);
+        nameListModel = new DefaultListModel<String>();
+        downloadedModel = new DefaultListModel<Integer>();
+        connectionModel = new DefaultListModel<Integer>();
+        name = new JList();
+        downloaded = new JList();
+        connections = new JList();
+        name.setModel(nameListModel);
+        
+        downloaded.setModel(downloadedModel);
+       
+        connections.setModel(connectionModel);
+ 
         bottomPanel.setLayout(new BorderLayout());
-        bottomPanel.add(list);
+        bottomPanel.add(name, BorderLayout.LINE_START);
+        bottomPanel.add(downloaded, BorderLayout.CENTER);
+        bottomPanel.add(connections, BorderLayout.LINE_END);
         basicPanel.add(bottomPanel, BorderLayout.SOUTH);
 
 
+    }
+
+
+    public void addTorrent(String fileName) {
+        String name = downloadManager.add(fileName);
+        downloadManager.addTorrentListener(new MyTorrentListener(), name);
+        torrents.put(name, numTorrents);
+        numTorrents++;
+        nameListModel.addElement(name);
+        downloadedModel.addElement(0);
+        connectionModel.addElement(0);
+    }
+
+    public void startTorrent(String name) {
+        downloadManager.start(name);
     }
 
     class ButtonListener implements ActionListener {
 
         public void actionPerformed(ActionEvent e) {
             JButton o = (JButton) e.getSource();
-            int [] selected = list.getSelectedIndices();
-            for(int i = 0; i < selected.length; i++) {
-                System.out.println(selected[i]);
+            int selected = name.getSelectedIndex();
+                        
+            if(o == start) {
+                String name = (String) nameListModel.get(selected);
+                startTorrent(name);
             }
-            
-
-            if(o == start)
-                System.out.println("Start button!");
             else if(o ==stop)
                 System.out.println("stop button!");
             else if(o == pause)
@@ -140,11 +176,23 @@ public class BTVUI extends JFrame {
 
             int returnValue = chooser.showOpenDialog(parent);
             if(returnValue == JFileChooser.APPROVE_OPTION) {
-                System.out.println(chooser.getSelectedFile().getName());
+                addTorrent(chooser.getSelectedFile().getName());
             }
             else {
                 System.out.println("No file chosen.");
             }
+        }
+    }
+
+    class MyTorrentListener implements TorrentListener {
+        public void handleTorrentEvent(TorrentEvent e) {
+            String name = e.getName();
+            int downloaded = e.getDownloaded();
+            int connections = e.getConnections();
+            int index = torrents.get(name);
+
+            downloadedModel.setElementAt(downloaded, index);
+            connectionModel.setElementAt(connections, index);
         }
     }
 
