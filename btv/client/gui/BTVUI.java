@@ -11,16 +11,21 @@ import btv.download.DLManager;
 import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
 
-import java.util.HashMap;
 import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.awt.Dimension;
+import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
-import java.io.File;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.JProgressBar;
+import javax.swing.JTable;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 
+import java.util.HashMap;
+import java.io.File;
 
 public class BTVUI extends JFrame {
 
@@ -34,15 +39,11 @@ public class BTVUI extends JFrame {
 
     // Components
     private JButton start, pause, stop, remove;
-    
-    private JList name, downloaded, connections;
-    private DefaultListModel<String> nameListModel; 
-    private DefaultListModel<Integer> downloadedModel, connectionModel;
-
-
     private JMenuBar menuBar;
     private JMenu menu;
     private JMenuItem menuItem;
+    private JTable table;
+    private DefaultTableModel tableModel;
 
 
 
@@ -93,31 +94,26 @@ public class BTVUI extends JFrame {
 
         basicPanel.add(topPanel, BorderLayout.NORTH);
 
+        // Set bottom panel and table.
+        bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BorderLayout());
+
+        tableModel = new DefaultTableModel();
+        tableModel.addColumn("Name");
+        tableModel.addColumn("Downloaded");
+        tableModel.addColumn("Peers");
+        table = new JTable(tableModel);
+        TableColumn col = table.getColumnModel().getColumn(1);
+        col.setCellRenderer(new ProgressCellRenderer());
+        bottomPanel.add(table.getTableHeader(), BorderLayout.PAGE_START);
+        bottomPanel.add(table);
+
+        basicPanel.add(bottomPanel);
+
+        add(basicPanel);
+
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-
-        // Set bottom panel and list.
-        bottomPanel = new JPanel();
-        nameListModel = new DefaultListModel<String>();
-        downloadedModel = new DefaultListModel<Integer>();
-        connectionModel = new DefaultListModel<Integer>();
-        name = new JList();
-        downloaded = new JList();
-        connections = new JList();
-        name.setModel(nameListModel);
-        
-        downloaded.setModel(downloadedModel);
-       
-        connections.setModel(connectionModel);
- 
-        bottomPanel.setLayout(new BorderLayout());
-        bottomPanel.add(name, BorderLayout.LINE_START);
-        bottomPanel.add(downloaded, BorderLayout.CENTER);
-        bottomPanel.add(connections, BorderLayout.LINE_END);
-        basicPanel.add(bottomPanel, BorderLayout.SOUTH);
-
-
     }
 
 
@@ -125,10 +121,9 @@ public class BTVUI extends JFrame {
         String name = downloadManager.add(fileName);
         downloadManager.addTorrentListener(new MyTorrentListener(), name);
         torrents.put(name, numTorrents);
+
+        tableModel.addRow(new Object [] {name, 0, 0});
         numTorrents++;
-        nameListModel.addElement(name);
-        downloadedModel.addElement(0);
-        connectionModel.addElement(0);
     }
 
     public void startTorrent(String name) {
@@ -139,10 +134,9 @@ public class BTVUI extends JFrame {
 
         public void actionPerformed(ActionEvent e) {
             JButton o = (JButton) e.getSource();
-            int selected = name.getSelectedIndex();
-                        
+            int index = table.getSelectedRow();            
             if(o == start) {
-                String name = (String) nameListModel.get(selected);
+                String name = (String)tableModel.getValueAt(index, 0); // Row, col
                 startTorrent(name);
             }
             else if(o ==stop)
@@ -191,8 +185,34 @@ public class BTVUI extends JFrame {
             int connections = e.getConnections();
             int index = torrents.get(name);
 
-            downloadedModel.setElementAt(downloaded, index);
-            connectionModel.setElementAt(connections, index);
+            tableModel.setValueAt(downloaded, index, 1);
+            tableModel.setValueAt(connections, index, 2);
+        }
+    }
+
+    public class ProgressCellRenderer extends JProgressBar
+                        implements TableCellRenderer {
+ 
+        public ProgressCellRenderer() {
+            super(0, 100);
+            setValue(0);
+            setString("0%");
+            setStringPainted(true);
+        }
+ 
+        public Component getTableCellRendererComponent(
+                                    JTable table,
+                                    Object value,
+                                    boolean isSelected,
+                                    boolean hasFocus,
+                                    int row,
+                                    int column) {
+ 
+            String n = value.toString();
+            int num = Integer.parseInt(n);  
+            setValue(num);
+            setString(n + "%");
+            return this;
         }
     }
 
