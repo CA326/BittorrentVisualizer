@@ -29,8 +29,8 @@ public class BTVUI extends JFrame {
     private HashMap<String, Integer> torrents;
     private int numTorrents = 0;
     
-	//panels
-	private JPanel basicPanel, topPanel, bottomPanel;
+    //panels
+    private JPanel basicPanel, topPanel, bottomPanel;
 
     // Components
     private JButton start, pause, stop, remove;
@@ -65,9 +65,9 @@ public class BTVUI extends JFrame {
         setJMenuBar(menuBar);
 
 
-		basicPanel = new JPanel();
-		basicPanel.setLayout(new BoxLayout(basicPanel, BoxLayout.Y_AXIS));
-		add(basicPanel);
+        basicPanel = new JPanel();
+        basicPanel.setLayout(new BoxLayout(basicPanel, BoxLayout.Y_AXIS));
+        add(basicPanel);
 
 
         // Top panel
