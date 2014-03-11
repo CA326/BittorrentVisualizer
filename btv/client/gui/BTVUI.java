@@ -6,7 +6,7 @@ Basic Interface Code
 
 */
 
-package btv.client;
+package btv.client.gui;
 import btv.download.DLManager;
 import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
