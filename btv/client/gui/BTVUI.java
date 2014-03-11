@@ -12,6 +12,7 @@ import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Dimension;
 import java.awt.Component;
 import java.awt.event.ActionEvent;
