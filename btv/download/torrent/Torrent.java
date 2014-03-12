@@ -294,7 +294,6 @@ public class Torrent extends Thread {
         synchronized(peers) {
             for(Peer p : peers) {
                 p.closePeerConnection();
-                peers.remove(p);
             }
         }
     }
