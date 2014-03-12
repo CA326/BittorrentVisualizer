@@ -356,6 +356,7 @@ public class Peer extends Thread {
     }
 
     public void resumeDownload() {
+        System.out.println("Peer: " + this + " resuming");
         paused = false;
     }
 

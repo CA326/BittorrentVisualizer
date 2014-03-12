@@ -278,6 +278,7 @@ public class Torrent extends Thread {
             // Eventually we will use the cleanUp method to handle this, 
             // maybe pass a boolean to specify an interrupted download 
             // clean up.
+            started = false; // Name this better later.
             closePeerConnections();
             stopRelayer();
         }    
