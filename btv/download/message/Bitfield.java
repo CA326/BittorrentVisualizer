@@ -40,7 +40,12 @@ public class Bitfield extends Message {
         /*
             Is bit at index i set?
         */
-        return bitfield[i] == '1';
+        if(i >= bitfield.length || i < 0) {
+            return false;
+        }
+        else {
+            return bitfield[i] == '1';
+        }
     }
 
     public void setBit(int i) {

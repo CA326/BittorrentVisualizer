@@ -42,7 +42,13 @@ public class DLManager {
 			Start the download with the appropriate name
 		*/
 		if(downloads.containsKey(name)) {
-			downloads.get(name).start();
+			Torrent t = downloads.get(name);
+			if(!t.isStarted()) {
+				t.start();
+			}
+			else if(t.paused()) {
+				t.resumeDownload();
+			}
 		}
 	}
 
@@ -50,12 +56,29 @@ public class DLManager {
 		/*
 			Pause the download with the appropriate name
 		*/
+		if(downloads.containsKey(name)) {
+			downloads.get(name).pause();
+		}
 	}
 
 	public void stop(String name) {
 		/*
 			Stop the download with the appropriate name.
 		*/
+		if(downloads.containsKey(name)) {
+			Torrent t = downloads.get(name);
+			try {
+				t.interrupt();
+				t.join();
+			}
+			catch(InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void remove(String name) {
+		downloads.remove(name);
 	}
 
 	public Torrent get(String name) {
