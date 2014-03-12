@@ -40,4 +40,4 @@ After we have a stable implementation of the protocol we are going to incorporat
 - ~~Splitting the temporary download file into proper files is slow. We are also using a temporary file for single file torrents which is unnecessary, we will remove this in the future.~~ Fixed by using Java's nio classes rather than streams.
 
 #### 10th March 2014
-- Some concurrency issues when downloading multiple torrents. 
+- ~~Some concurrency issues when downloading multiple torrents.~~ Fixed by using EventRelayer class
