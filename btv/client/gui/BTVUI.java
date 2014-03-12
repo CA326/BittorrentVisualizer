@@ -228,7 +228,15 @@ public class BTVUI extends JFrame {
             String name = e.getName();
             int downloaded = e.getDownloaded();
             int connections = e.getConnections();
-            int index = torrents.get(name);
+            int index = -1;
+            // Get the index by searching the table rows.
+            for(int i = 0; i < tableModel.getRowCount(); i++) {
+                String n = (String) table.getValueAt(i, 0);
+                if(name.equals(n)) {
+                    index = i;
+                    break;
+                }
+            }
 
             tableModel.setValueAt(downloaded, index, 1);
             tableModel.setValueAt(connections, index, 2);

@@ -123,36 +123,35 @@ public class Peer extends Thread {
             torrent.removePeer(this);
         }
 
-        while(!torrent.isDownloaded()) {
-            int available = 0;
-            try {
-                available = in.available();
-            }   
-            catch(IOException e) {
-                continue;
-            }
-
-            if(available > 0) {
-                // Peer has something to say, parse the message
+        try {
+            while(!torrent.isDownloaded()) {
+                int available = 0;
                 try {
-                    readMessage();
-                }
+                    available = in.available();
+                }   
                 catch(IOException e) {
                     continue;
                 }
 
-                try {
-                    Thread.sleep(10);    
+                if(available > 0) {
+                    // Peer has something to say, parse the message
+                    try {
+                        readMessage();
+                    }
+                    catch(IOException e) {
+                        continue;
+                    }
+
+                    Thread.sleep(10);
                 }
-                catch(InterruptedException e) {}
-            }
-            else {
-                sendPeerMessage();
-                try {
-                    Thread.sleep(10);    
+                else {
+                    sendPeerMessage();
+                    Thread.sleep(10);
                 }
-                catch(InterruptedException e) {}
             }
+        }
+        catch(InterruptedException e) {
+            return;
         }
     }
 
@@ -203,6 +202,7 @@ public class Peer extends Thread {
         }
         else {
             if(paused) {
+                canSend = true;
                 try {
                     // Paused peers need to send a keep alive message to keep
                     // the connection open.
