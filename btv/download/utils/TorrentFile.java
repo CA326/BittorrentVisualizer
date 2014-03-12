@@ -7,9 +7,11 @@
 
 package btv.download.utils;
 
+import java.nio.channels.FileChannel;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.FileOutputStream;
 public class TorrentFile {
 	private String path;
 	private int length;
@@ -20,22 +22,24 @@ public class TorrentFile {
 	}
 
 	public void write(RandomAccessFile r, int start) {
-		/*
-			TODO: Take seek into account here.
-		*/
+		
 		try {
+
+			FileChannel in = r.getChannel();
 			File f = new File(path);
 			if(f.getParentFile() != null)
 				f.getParentFile().mkdirs();
 			f.createNewFile();
 
-			RandomAccessFile out = new RandomAccessFile(f, "rw");
-			r.seek(start);
-			for(int i = 0; i < length; i++) {
-				out.write(r.read());
-			}
+			FileChannel out = new FileOutputStream(f).getChannel();
 
+			// Copy the file.
+			in.position(start);
+			in.transferTo(0, length, out);
+
+			in.close();
 			out.close();
+
 		}
 		catch(IOException e) {
 

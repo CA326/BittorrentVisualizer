@@ -87,7 +87,10 @@ public class Message {
     public void send(DataOutputStream out) {
         try {
             out.writeInt(length);
-            out.writeByte(id);
+
+            if(id >= 0) {
+                out.writeByte(id);
+            }
 
             if(payload != null) {
                 out.write(payload);

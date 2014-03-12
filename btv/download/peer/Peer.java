@@ -7,7 +7,10 @@
         Send pieces to the associated torrent to be written to the disk.
 
         TODO:
-            A lot of work on efficiency needs to be done.
+            1. A lot of work on efficiency needs to be done.
+            2. We need to catch exception in the run method so the thread can exit 
+            rather than catching them in the various different methods.
+
     Author: Stephan McLean
     Date: 6th February 2014
 */
@@ -46,8 +49,10 @@ public class Peer extends Thread {
     // don't send any more until we get the response.
     private boolean canSend = true;
 
+    private boolean paused = false;
+    private long pauseStart;
+
     private int numOfPendingRequests = 0;
-    private int currentPiece = -1;
 
     private Bitfield bitfield;
     private HashSet<Request> requested;
@@ -108,7 +113,15 @@ public class Peer extends Thread {
             torrent.removePeer(this);
             return;
         }
-        performHandShake();
+
+        try {
+            performHandShake();
+        }
+        catch(Exception e) {
+            System.out.println("Could not complete peer handshake");
+            closePeerConnection();
+            torrent.removePeer(this);
+        }
 
         while(!torrent.isDownloaded()) {
             int available = 0;
@@ -116,7 +129,7 @@ public class Peer extends Thread {
                 available = in.available();
             }   
             catch(IOException e) {
-                //System.out.println("Error communicating with peer: " + this);
+                continue;
             }
 
             if(available > 0) {
@@ -125,7 +138,7 @@ public class Peer extends Thread {
                     readMessage();
                 }
                 catch(IOException e) {
-                    //System.out.println("Error reading peer message");
+                    continue;
                 }
 
                 try {
@@ -189,8 +202,20 @@ public class Peer extends Thread {
             }
         }
         else {
-            // Request piece.
-            if(canSend) {
+            if(paused) {
+                try {
+                    // Paused peers need to send a keep alive message to keep
+                    // the connection open.
+                    if(System.currentTimeMillis() - pauseStart > 60000) {
+                        new Message(Message.KEEP_ALIVE, 0, null).send(out);
+                    }
+                    Thread.sleep(10000);
+                }
+                catch(InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            else if(canSend) {
                 chainRequests();
             }
         }
@@ -230,7 +255,7 @@ public class Peer extends Thread {
         out = new DataOutputStream(s.getOutputStream());
     }
 
-    private void performHandShake() {
+    private void performHandShake() throws IOException {
         /*
             We must exchange a handshake after initially connecting
             to this peer.
@@ -241,10 +266,7 @@ public class Peer extends Thread {
         byte [] handshake = formHandShake();
 
         if(!incomingPeer) {
-            try {
-                out.write(handshake);   
-            }
-            catch(IOException e) {}
+            out.write(handshake);   
         }
 
         byte [] peerHandshake = receiveHandShake();
@@ -252,16 +274,13 @@ public class Peer extends Thread {
         if(!handShakeOK(handshake, peerHandshake)) {
             /*
                 There is a problem with the handshake, we must
-                drop the connection
+                drop the connection. We need to exit the thread here. **
             */
             closePeerConnection();
         }
 
         if(incomingPeer) {
-            try {
-                out.write(handshake);
-            }
-            catch(IOException e) {}
+            out.write(handshake);
         }
 
     }
@@ -331,6 +350,15 @@ public class Peer extends Thread {
         }
     }
 
+    public void pause() {
+        paused = true;
+        pauseStart = System.currentTimeMillis();
+    }
+
+    public void resumeDownload() {
+        paused = false;
+    }
+
     public void setIncoming(boolean b) {
         incomingPeer = b;
     }
@@ -341,10 +369,6 @@ public class Peer extends Thread {
 
     public boolean canDownload(int i) {
         return bitfield.bitSet(i);
-    }
-
-    public boolean isDownloading(int i) {
-        return currentPiece == i;
     }
 
     public void cancel(Request r) {

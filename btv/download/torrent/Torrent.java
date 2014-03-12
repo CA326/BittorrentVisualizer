@@ -53,20 +53,19 @@ public class Torrent extends Thread {
     private int numberOfPieces;
     private ArrayList<Peer> peers;
     private Tracker tracker;
+    private ArrayList<Tracker> trackers;
     private Bitfield bitfield;
     private HashMap<Request, Integer> requested;
     private int percentDownloaded;
+    private boolean started = false;
+    private boolean paused = false;
 
     // File related vars
     private RandomAccessFile file;
     private File tempFile;
     private ArrayList<TorrentFile> torrentFiles;
 
-    // Testing only
-    private long startTime;
-
     // Event handlers
-    private ArrayList<TorrentListener> listeners;
     private EventRelayer relayer;
 
     public Torrent(String fileName) {
@@ -90,12 +89,9 @@ public class Torrent extends Thread {
         hash = computeHash();
         peerID = generatePeerID();
         peers = new ArrayList<Peer>();
+        trackers = new ArrayList<Tracker>();
 
-        listeners = new ArrayList<TorrentListener>();
         relayer = new EventRelayer(this);
-
-        // Start timer
-        startTime = System.currentTimeMillis();
     }
 
     private void setUpFiles() {
@@ -171,24 +167,30 @@ public class Torrent extends Thread {
             TODO: Check for keys not in map.
         */
         Map trackerResponse = null;
-        boolean validResponse = false;
-        int attempt = 0;
-        while(!validResponse && attempt < 3) {
-            try {
-                trackerResponse = tracker.contact();
-                validResponse = true;
-            }
-            catch(BDecodingException e) {
-                attempt++;
-                e.printStackTrace();
+        if(trackers.size() > 0) {
+            Tracker tracker = trackers.remove(0);
+            boolean validResponse = false;
+            int attempt = 0;
+            while(!validResponse && attempt < 3) {
+                try {
+                    trackerResponse = tracker.contact();
+                    validResponse = true;
+                }
+                catch(BDecodingException e) {
+                    attempt++;
+                    e.printStackTrace();
+                }
             }
         }
-
         /*
             Still need to check for bad tracker response here.
         */
-
-        parsePeers(trackerResponse);
+        if(trackerResponse != null) {
+            parsePeers(trackerResponse);
+        }
+        else {
+            System.out.println("Bad tracker response, not parsing peers.");
+        }
     }
 
     public void parseTracker() {
@@ -199,9 +201,8 @@ public class Torrent extends Thread {
         */
         String announce = (String) metainfo.get("announce");
         if(announce.startsWith("http")) {
-            tracker = new HTTPTracker((String)metainfo.get("announce"), 
-                        percentEncode(hash), peerID, port, downloaded,
-                                 uploaded, left);
+            tracker = createTracker(announce);
+            trackers.add(tracker);
         }
         else {
             if(metainfo.containsKey("announce-list")) {
@@ -210,14 +211,18 @@ public class Torrent extends Thread {
 
                 for(ArrayList<String> a : announceList) {
                     if(a.get(0).startsWith("http")) { // Check for null here.
-                        tracker = new HTTPTracker(a.get(0), 
-                        percentEncode(hash), peerID, port, downloaded,
-                                 uploaded, left);
+                        tracker = createTracker(a.get(0));
+                        trackers.add(tracker);
                     }
                 }
             }
             // If no announce-list found we need to deal with that here.
         }
+    }
+
+    private Tracker createTracker(String announce) {
+        return new HTTPTracker(announce, percentEncode(hash), 
+            peerID, port, downloaded, uploaded, left);
     }
 
     public void addPeer(Peer p) {
@@ -229,6 +234,9 @@ public class Torrent extends Thread {
     public void removePeer(Peer p) {
         synchronized(peers) {
             peers.remove(p);
+            if(peers.size() < 10) {
+                contactTracker();
+            }
         }
     }
 
@@ -253,6 +261,7 @@ public class Torrent extends Thread {
     }
 
     public void run() {
+        started = true;
         parseTracker();
         contactTracker();
         startPeers();
@@ -261,23 +270,31 @@ public class Torrent extends Thread {
             while(!isDownloaded()) {
                 Thread.sleep(1000);
             }
-
-            // Downloaded, do clean up
-            cleanUp();
-
-            long stopTime = System.currentTimeMillis();
-            System.out.println();
-            System.out.println("Download took: " + ((stopTime - startTime) / 1000) + " seconds");
         }
-        catch(Exception e) {
-            System.out.println("Something went wrong.");
-            e.printStackTrace();
-        }
+        catch(InterruptedException e) {
+            // Download manager has interrupted, we will need to
+            // clean up here so that we can resume the download later. TODO
+            // For now we are just going to exit.
+            // Eventually we will use the cleanUp method to handle this, 
+            // maybe pass a boolean to specify an interrupted download 
+            // clean up.
+            closePeerConnections();
+            stopRelayer();
+        }    
     }
 
     private void startPeers() {
         for(Peer p : peers) {
             p.start();
+        }
+    }
+
+    private void closePeerConnections() {
+        synchronized(peers) {
+            for(Peer p : peers) {
+                p.closePeerConnection();
+                peers.remove(p);
+            }
         }
     }
 
@@ -307,21 +324,32 @@ public class Torrent extends Thread {
     }
 
     public void cleanUp() {
-        synchronized(peers) {
-            for(Peer p : peers) {
-                p.closePeerConnection();
+        
+        closePeerConnections();
+
+        if(torrentFiles.size() > 1) {
+            int start = 0;
+            // Now finalise the files.
+            for(TorrentFile t : torrentFiles) {
+                t.write(file, start);
+                start += t.getLength();
             }
+            deleteTempFile();
         }
+        else {
+            // Only one file, rename it to avoid writing to
+            // the disk
+            // Need to check for null torrent file here 
+            File rename = new File(torrentFiles.get(0).getPath());
+            tempFile.renameTo(rename);
+            
+        }   
+        stopRelayer();
+    }
 
-        int start = 0;
-        // Now finalise the files.
-        for(TorrentFile t : torrentFiles) {
-            t.write(file, start);
-            start += t.getLength();
-        }
-
-        deleteTempFile();
+    private void stopRelayer() {
         try {
+            relayer.sendEvent(); // Make sure interface is updated.
             relayer.interrupt();
             relayer.join();
         }
@@ -395,19 +423,6 @@ public class Torrent extends Thread {
         return builder.toString();
     }
 
-    private void cancelPiece(Piece p) {
-        /*
-            During end game we send requests for pieces to more than one peer.
-            Once we have received the piece we need to cancel the other requests.
-        */
-        Request toCancel = new Request(Message.REQUEST, 13, p.getIndex()
-                    , p.getOffset(), p.getBlock().length);
-
-        for(Peer peer : peers) {
-            peer.cancel(toCancel);
-        }
-    }
-
     /*
         Peer related methods ----------------------------------------------
     */
@@ -434,7 +449,9 @@ public class Torrent extends Thread {
             percent = 100 - percent;
             percentDownloaded = (int) percent;
 
-            cancelPiece(p); // Should only cancel if percentDownloaded >= 99?
+            if(percentDownloaded >= 99) {
+                cancelPiece(p);
+            }
         }
         catch(IOException e) {
             System.out.println("Could not write block to file.");
@@ -463,6 +480,19 @@ public class Torrent extends Thread {
         }
 
         return null;
+    }
+
+    private void cancelPiece(Piece p) {
+        /*
+            During end game we send requests for pieces to more than one peer.
+            Once we have received the piece we need to cancel the other requests.
+        */
+        Request toCancel = new Request(Message.REQUEST, 13, p.getIndex()
+                    , p.getOffset(), p.getBlock().length);
+
+        for(Peer peer : peers) {
+            peer.cancel(toCancel);
+        }
     }
 
     /*
@@ -528,59 +558,48 @@ public class Torrent extends Thread {
         return hash + " " + percentDownloaded;
     }
 
+    public boolean isStarted() {
+        return started;
+    }
+
+    public boolean paused() {
+        return paused;
+    }
+
     /*
-        End of Getters & Setters ---------
+        End of Getters & Setters ----------------
     */
 
     /*
-        Methods to be called by the download manager.
+        Methods to be called by the download manager. -----
     */
 
     public void pause() {
-
+        paused = true;
+        synchronized(peers) {
+            for(Peer p : peers) {
+                p.pause();
+            }
+        }
     }
 
-    public void stopDownload() {
-
+    public void resumeDownload() {
+        paused = false;
+        synchronized(peers) {
+            for(Peer p : peers) {
+                p.resumeDownload();
+            }
+        }
     }
 
     public void addTorrentListener(TorrentListener t) {
-        listeners.add(t);
+        relayer.addTorrentListener(t);
     }
 
     /*
         End of download manager methods -------------------
     */
 
-    /*
-        A small class to relay events to our listeners.
-    */
-    private class EventRelayer extends Thread {
-        private Torrent torrent;
-        private boolean canRun = true;
-
-        public EventRelayer(Torrent t) {
-            torrent = t;
-        }
-
-        public void run() {
-            while(canRun) {
-                try {
-                    // Send a TorrentEvent to every listener
-                    TorrentEvent event = new TorrentEvent(torrent, 
-                    torrent.name(), torrent.percentDownloaded(), 
-                    torrent.numberOfConnections());
-                    for(TorrentListener t : listeners) {
-                        t.handleTorrentEvent(event);
-                    }
-                    Thread.sleep(5000);
-                }
-                catch(InterruptedException e) {
-                    canRun = false;
-                }
-            }
-        }
-    }
     
     public static void main(String [] args) {
         Torrent t = new Torrent(args[0]);
