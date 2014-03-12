@@ -12,10 +12,14 @@ import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Dimension;
 import java.awt.Component;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.table.DefaultTableModel;
@@ -23,6 +27,14 @@ import javax.swing.JProgressBar;
 import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+
+import javafx.embed.swing.JFXPanel;
+import javafx.application.Platform;
+import javafx.scene.Group;
+import javafx.scene.Scene;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 
 import java.util.HashMap;
 import java.io.File;
@@ -98,13 +110,7 @@ public class BTVUI extends JFrame {
         bottomPanel = new JPanel();
         bottomPanel.setLayout(new BorderLayout());
 
-        tableModel = new DefaultTableModel();
-        tableModel.addColumn("Name");
-        tableModel.addColumn("Downloaded");
-        tableModel.addColumn("Peers");
-        table = new JTable(tableModel);
-        TableColumn col = table.getColumnModel().getColumn(1);
-        col.setCellRenderer(new ProgressCellRenderer());
+        setupTable();
         bottomPanel.add(table.getTableHeader(), BorderLayout.PAGE_START);
         bottomPanel.add(table);
 
@@ -114,8 +120,30 @@ public class BTVUI extends JFrame {
 
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    }
+    } 
 
+    public void setupTable() {
+        tableModel = new DefaultTableModel();
+        tableModel.addColumn("Name");
+        tableModel.addColumn("Downloaded");
+        tableModel.addColumn("Peers");
+        table = new JTable(tableModel);
+        TableColumn col = table.getColumnModel().getColumn(1);
+        col.setCellRenderer(new ProgressCellRenderer());
+
+        // Listener to handle Double clicks which open a visualisation.
+        table.addMouseListener(new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                Point p = e.getPoint();
+                int index = table.rowAtPoint(p);
+                if(e.getClickCount() == 2) {
+                    // Open Visualization
+                    String name = (String) tableModel.getValueAt(index, 0);
+                    new Visualisation(name);
+                }
+            }
+        });
+    }
 
     public void addTorrent(String fileName) {
         String name = downloadManager.add(fileName);
@@ -130,21 +158,38 @@ public class BTVUI extends JFrame {
         downloadManager.start(name);
     }
 
+    public void stopTorrent(String name) {
+        downloadManager.stop(name);
+    }
+
+    public void pauseTorrent(String name) {
+        downloadManager.pause(name);
+    }
+
+    public void removeTorrent(String name, int index) {
+        downloadManager.remove(name);
+        // Remove from table.
+        tableModel.removeRow(index);
+    }
+
     class ButtonListener implements ActionListener {
 
         public void actionPerformed(ActionEvent e) {
             JButton o = (JButton) e.getSource();
-            int index = table.getSelectedRow();            
+            int index = table.getSelectedRow();
+            String name = (String)tableModel.getValueAt(index, 0); // Row, col          
             if(o == start) {
-                String name = (String)tableModel.getValueAt(index, 0); // Row, col
                 startTorrent(name);
             }
-            else if(o ==stop)
-                System.out.println("stop button!");
-            else if(o == pause)
-                System.out.println("pause button!");
-            else if(o == remove)
-                System.out.println("remove button!");
+            else if(o == stop) {
+                stopTorrent(name);
+            }
+            else if(o == pause) {
+                pauseTorrent(name);
+            }
+            else if(o == remove) {
+                removeTorrent(name, index);
+            }    
         }
     }
 
@@ -226,5 +271,44 @@ public class BTVUI extends JFrame {
                 b.setVisible(true);
             }
         });
+    }
+}
+
+class Visualisation extends JFrame {
+    private JFXPanel panel;
+    private String name;
+
+    public Visualisation(String n) {
+        super(n + " - Visualization");
+        name = n;
+        panel = new JFXPanel();
+        add(panel);
+        setSize(400, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+
+
+        // Runnable stuff
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                panel.setScene(createScene());
+            }
+       });
+    }
+
+    public Scene createScene() {
+        Group  root  =  new  Group();
+        Scene  scene  =  new  Scene(root, Color.ALICEBLUE);
+        Text  text  =  new  Text();
+        
+        text.setX(40);
+        text.setY(100);
+        text.setFont(new Font(25));
+        text.setText("Welcome JavaFX!");
+
+        root.getChildren().add(text);
+
+        return (scene);
     }
 }
