@@ -67,17 +67,20 @@ public class DLManager {
 		*/
 		if(downloads.containsKey(name)) {
 			Torrent t = downloads.get(name);
-			try {
-				t.interrupt();
-				t.join();
-			}
-			catch(InterruptedException e) {
-				e.printStackTrace();
+			if(t.isStarted()) {
+				try {
+					t.interrupt();
+					t.join();
+				}
+				catch(InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
 
 	public void remove(String name) {
+		stop(name);
 		downloads.remove(name);
 	}
 
