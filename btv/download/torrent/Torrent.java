@@ -270,6 +270,8 @@ public class Torrent extends Thread {
             while(!isDownloaded()) {
                 Thread.sleep(1000);
             }
+
+            cleanUp();
         }
         catch(InterruptedException e) {
             // Download manager has interrupted, we will need to
@@ -294,7 +296,6 @@ public class Torrent extends Thread {
         synchronized(peers) {
             for(Peer p : peers) {
                 p.closePeerConnection();
-                peers.remove(p);
             }
         }
     }
@@ -356,6 +357,7 @@ public class Torrent extends Thread {
         }
         catch(InterruptedException e) {
             System.out.println("Could not end Relayer");
+            e.printStackTrace();
         }
     }
 

@@ -34,10 +34,10 @@ After we have a stable implementation of the protocol we are going to incorporat
 - BDecoding fails on some tracker responses.
 - Download sticks on last piece
 - Occasional out of memory errors in class Peer
-- Very high CPU usage on large torrents (need better thread management)
+- ~~Very high CPU usage on large torrents (need better thread management)~~
 
 #### 3rd March 2014
-- Splitting the temporary download file into proper files is slow. We are also using a temporary file for single file torrents which is unnecessary, we will remove this in the future.
+- ~~Splitting the temporary download file into proper files is slow. We are also using a temporary file for single file torrents which is unnecessary, we will remove this in the future.~~ Fixed by using Java's nio classes rather than streams.
 
 #### 10th March 2014
-- Some concurrency issues when downloading multiple torrents. 
+- ~~Some concurrency issues when downloading multiple torrents.~~ Fixed by using EventRelayer class
