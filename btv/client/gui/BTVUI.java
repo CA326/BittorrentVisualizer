@@ -32,9 +32,13 @@ import javafx.embed.swing.JFXPanel;
 import javafx.application.Platform;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
+import javafx.scene.shape.Circle;
+import javafx.scene.text.*;
+import javafx.scene.text.TextBoundsType;
+import javafx.scene.layout.StackPane;
 
 import java.util.HashMap;
 import java.io.File;
@@ -276,14 +280,17 @@ public class BTVUI extends JFrame {
 
 class Visualisation extends JFrame {
     private JFXPanel panel;
+    private HBox root;
+    private BorderPane border;
     private String name;
+    private int numCircles = 0;
 
     public Visualisation(String n) {
         super(n + " - Visualization");
         name = n;
         panel = new JFXPanel();
         add(panel);
-        setSize(400, 400);
+        setSize(1100, 1000);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setVisible(true);
 
@@ -297,18 +304,32 @@ class Visualisation extends JFrame {
        });
     }
 
+    public void addCircle() {
+        Circle c = new Circle();
+        c.setRadius(40.0f);
+        numCircles++;
+        c.setFill(Color.AZURE);
+        c.setStroke(Color.FORESTGREEN);
+        Group g = new Group(c);
+        Text  t  =  new  Text("" + numCircles);
+        t.setBoundsType(TextBoundsType.VISUAL);
+        t.setFont(Font.font("Verdana", FontWeight.BOLD, 8));
+        StackPane s = new StackPane();
+        s.getChildren().addAll(g, t);
+        root.getChildren().add(s);
+    }
+
     public Scene createScene() {
-        Group  root  =  new  Group();
-        Scene  scene  =  new  Scene(root, Color.ALICEBLUE);
-        Text  text  =  new  Text();
-        
-        text.setX(40);
-        text.setY(100);
-        text.setFont(new Font(25));
-        text.setText("Welcome JavaFX!");
+        border = new BorderPane();
+        root = new HBox(5);
+        Scene  scene  =  new  Scene(border, Color.ALICEBLUE);
 
-        root.getChildren().add(text);
+        for(int i = 0; i < 12; i++) {
+           addCircle();
+        }
 
-        return (scene);
+        border.setTop(root);
+
+        return scene;
     }
 }
