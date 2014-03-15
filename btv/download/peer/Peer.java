@@ -18,6 +18,10 @@
 package btv.download.peer;
 import btv.download.torrent.Torrent;
 import btv.download.message.*;
+import btv.event.peer.PeerConnectionListener;
+import btv.event.peer.PeerConnectionEvent;
+import btv.event.peer.PeerCommunicationListener;
+import btv.event.peer.PeerCommunicationEvent;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -56,6 +60,10 @@ public class Peer extends Thread {
 
     private Bitfield bitfield;
     private HashSet<Request> requested;
+
+    // Event handling
+    private PeerConnectionListener peerConnectionListener;
+    private PeerCommunicationListener peerCommunicationListener;
 
     public Peer(String ip1, int port1, Torrent t) {
         /*
@@ -229,6 +237,7 @@ public class Peer extends Thread {
             Request r = torrent.getNextRequest(this);
             if(r != null) {
                 r.send(out);
+                peerCommunicationEvent(true, false);
                 requested.add(r);
                 numOfPendingRequests++;
             }
@@ -245,6 +254,8 @@ public class Peer extends Thread {
             The name doesn't describe what's happening well enough.
         */
 
+        peerConnectingEvent(true, false, false);    
+
         if(s == null) {
             // Try to connect to the peer.
             // Timeout after 20 seconds.
@@ -253,6 +264,24 @@ public class Peer extends Thread {
         }
         in = new DataInputStream(s.getInputStream());
         out = new DataOutputStream(s.getOutputStream());
+
+        peerConnectingEvent(false, true, false);
+    }
+
+    private void peerConnectingEvent(boolean connecting, boolean connected, 
+                                        boolean disconnected) {
+        /*
+            Inform our listeners that we are connecting.
+        */
+        PeerConnectionEvent e = new PeerConnectionEvent(this, ip, connecting, 
+                                connected, disconnected);
+        peerConnectionListener.handlePeerConnectionEvent(e);
+    }
+
+    private void peerCommunicationEvent(boolean dataSent, boolean dataReceived) {
+        PeerCommunicationEvent e = new PeerCommunicationEvent(this, ip,
+                                                dataReceived, dataSent);
+        peerCommunicationListener.handlePeerEvent(e);
     }
 
     private void performHandShake() throws IOException {
@@ -348,6 +377,7 @@ public class Peer extends Thread {
         catch(IOException e) {
             System.out.println("Could not close connections");
         }
+        peerConnectingEvent(false, false, true);
     }
 
     public void pause() {
@@ -377,6 +407,14 @@ public class Peer extends Thread {
             new Cancel(Message.CANCEL, 13, r.getIndex(), r.getOffset(),
                  r.getBlockLength()).send(out);
         }
+    }
+
+    public void addPeerConnectionListener(PeerConnectionListener p) {
+        peerConnectionListener = p;
+    }
+
+    public void addPeerCommunicationListener(PeerCommunicationListener p) {
+        peerCommunicationListener = p;
     }
 
     /*
@@ -415,6 +453,7 @@ public class Peer extends Thread {
     }
 
     private void piece(Message m) {
+        peerCommunicationEvent(false, true);
         Piece p = (Piece) m;
         numOfPendingRequests--;
         if(numOfPendingRequests == 0)

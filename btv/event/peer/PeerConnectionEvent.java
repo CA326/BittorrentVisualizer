@@ -16,9 +16,10 @@ public class PeerConnectionEvent extends EventObject {
 	private String ip;
 	private boolean connecting, connected, disconnected;
 
-	public PeerConnectionEvent(Object source, boolean connecting1,
+	public PeerConnectionEvent(Object source, String i, boolean connecting1,
 								boolean connected1, boolean disconnected1) {
 		super(source);
+		ip = i;
 		connecting = connecting1;
 		connected = connected1;
 		disconnected = disconnected1;
@@ -34,5 +35,9 @@ public class PeerConnectionEvent extends EventObject {
 
 	public boolean disconnected() {
 		return disconnected;
+	}
+
+	public String getIP() {
+		return ip;
 	}
 }

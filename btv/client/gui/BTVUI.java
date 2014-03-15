@@ -10,6 +10,8 @@ package btv.client.gui;
 import btv.download.DLManager;
 import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
+import btv.event.peer.PeerConnectionListener;
+import btv.event.peer.PeerCommunicationListener;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -27,18 +29,6 @@ import javax.swing.JProgressBar;
 import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-
-import javafx.embed.swing.JFXPanel;
-import javafx.application.Platform;
-import javafx.scene.Group;
-import javafx.scene.Scene;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.text.*;
-import javafx.scene.text.TextBoundsType;
-import javafx.scene.layout.StackPane;
 
 import java.util.HashMap;
 import java.io.File;
@@ -143,10 +133,14 @@ public class BTVUI extends JFrame {
                 if(e.getClickCount() == 2) {
                     // Open Visualization
                     String name = (String) tableModel.getValueAt(index, 0);
-                    new Visualisation(name);
+                    openVisualisation(name);
                 }
             }
         });
+    }
+
+    public void openVisualisation(String name) {
+        new Visualisation(this, name);
     }
 
     public void addTorrent(String fileName) {
@@ -174,6 +168,14 @@ public class BTVUI extends JFrame {
         downloadManager.remove(name);
         // Remove from table.
         tableModel.removeRow(index);
+    }
+
+    public void addPeerConnectionListener(PeerConnectionListener p, String name) {
+        downloadManager.addPeerConnectionListener(p, name);
+    }
+
+    public void addPeerCommunicationListener(PeerCommunicationListener p, String name) {
+        downloadManager.addPeerCommunicationListener(p, name);
     }
 
     class ButtonListener implements ActionListener {
@@ -283,61 +285,5 @@ public class BTVUI extends JFrame {
                 b.setVisible(true);
             }
         });
-    }
-}
-
-class Visualisation extends JFrame {
-    private JFXPanel panel;
-    private HBox root;
-    private BorderPane border;
-    private String name;
-    private int numCircles = 0;
-
-    public Visualisation(String n) {
-        super(n + " - Visualization");
-        name = n;
-        panel = new JFXPanel();
-        add(panel);
-        setSize(1100, 1000);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setVisible(true);
-
-
-        // Runnable stuff
-        Platform.runLater(new Runnable() {
-            @Override
-            public void run() {
-                panel.setScene(createScene());
-            }
-       });
-    }
-
-    public void addCircle() {
-        Circle c = new Circle();
-        c.setRadius(40.0f);
-        numCircles++;
-        c.setFill(Color.AZURE);
-        c.setStroke(Color.FORESTGREEN);
-        Group g = new Group(c);
-        Text  t  =  new  Text("" + numCircles);
-        t.setBoundsType(TextBoundsType.VISUAL);
-        t.setFont(Font.font("Verdana", FontWeight.BOLD, 8));
-        StackPane s = new StackPane();
-        s.getChildren().addAll(g, t);
-        root.getChildren().add(s);
-    }
-
-    public Scene createScene() {
-        border = new BorderPane();
-        root = new HBox(5);
-        Scene  scene  =  new  Scene(border, Color.ALICEBLUE);
-
-        for(int i = 0; i < 12; i++) {
-           addCircle();
-        }
-
-        border.setTop(root);
-
-        return scene;
     }
 }

@@ -15,6 +15,7 @@
 
 package btv.download.torrent;
 
+
 import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
 import btv.bencoding.BDecodingException;
@@ -30,6 +31,8 @@ import btv.download.message.Request;
 import btv.download.message.Piece;
 import btv.event.torrent.TorrentListener;
 import btv.event.torrent.TorrentEvent;
+import btv.event.peer.PeerConnectionListener;
+import btv.event.peer.PeerCommunicationListener;
 
 import java.util.*;
 import java.io.RandomAccessFile;
@@ -65,8 +68,11 @@ public class Torrent extends Thread {
     private File tempFile;
     private ArrayList<TorrentFile> torrentFiles;
 
-    // Event handlers
     private EventRelayer relayer;
+
+    // Peer event handling.
+    private PeerConnectionListener peerConnectionListener;
+    private PeerCommunicationListener peerCommunicationListener;
 
     public Torrent(String fileName) {
 
@@ -228,15 +234,15 @@ public class Torrent extends Thread {
     public void addPeer(Peer p) {
         synchronized(peers) {
             peers.add(p);
+            p.addPeerConnectionListener(peerConnectionListener);
+            p.addPeerCommunicationListener(peerCommunicationListener);
         }
     }
 
     public void removePeer(Peer p) {
         synchronized(peers) {
+            p.closePeerConnection();
             peers.remove(p);
-            if(peers.size() < 10) {
-                contactTracker();
-            }
         }
     }
 
@@ -603,7 +609,19 @@ public class Torrent extends Thread {
         End of download manager methods -------------------
     */
 
-    
+    /*
+        Visualisation related methods.
+    */
+
+    public void addPeerConnectionListener(PeerConnectionListener p) {
+        peerConnectionListener = p;
+    }
+
+    public void addPeerCommunicationListener(PeerCommunicationListener p) {
+        peerCommunicationListener = p;
+    }
+
+
     public static void main(String [] args) {
         Torrent t = new Torrent(args[0]);
         t.start();

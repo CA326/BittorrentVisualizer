@@ -13,6 +13,8 @@ package btv.download;
 
 import btv.download.torrent.Torrent;
 import btv.event.torrent.TorrentListener;
+import btv.event.peer.PeerConnectionListener;
+import btv.event.peer.PeerCommunicationListener;
 
 import java.util.HashMap;
 import java.util.Set;
@@ -103,6 +105,18 @@ public class DLManager {
 	public void addTorrentListener(TorrentListener t, String name) {
 		if(downloads.containsKey(name)) {
 			downloads.get(name).addTorrentListener(t);
+		}
+	}
+
+	public void addPeerConnectionListener(PeerConnectionListener p, String name) {
+		if(downloads.containsKey(name)) {
+			downloads.get(name).addPeerConnectionListener(p);
+		}
+	}
+
+	public void addPeerCommunicationListener(PeerCommunicationListener p, String name) {
+		if(downloads.containsKey(name)) {
+			downloads.get(name).addPeerCommunicationListener(p);
 		}
 	}
 
