@@ -1,7 +1,9 @@
 ##CA326 Third year project.
 
-Currently: Implementing BitTorrent protocol.
-After we have a stable implementation of the protocol we are going to incorporate events to tie the implementation in with our visualisation.
+Currently: Debugging, improving performance. Visualisation window is a bit untidy(some peers off screen etc).
+
+### Screenshot of Visualisation.
+![alt tag](Screen Shot 2014-03-15 at 17.10.44.png)
 
 ###Progress:
 - Can parse metainfo file.
