@@ -37,7 +37,7 @@ public class EventRelayer extends Thread {
         // Send a TorrentEvent to every listener
         TorrentEvent event = new TorrentEvent(torrent, 
         torrent.name(), torrent.percentDownloaded(), 
-        torrent.numberOfConnections());
+        torrent.numberOfConnections(), torrent.downloaded());
         for(TorrentListener t : listeners) {
             t.handleTorrentEvent(event);
         }

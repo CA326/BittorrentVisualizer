@@ -3,6 +3,16 @@
     It will use PeerConnection and PeerCommunication listeners to show
     the flow of data involved with the download.
 
+    Peers are shown as circles with their IP labled on the Circle.
+    Circles are Red for connecting peers and Green for established connections.
+    Data coming from and going to peers is shown via transitions. 
+    We have different colour transition nodes for the different type of
+    bittorrent messages. PeerCommunicationEvents have a message type
+    which we use to get the colour of the transition from a predefined array.
+
+    TODO: Need to take into account, viewing visualisation in the 
+    middle of a download. Need to get list of already connected peers.
+
 */
 package btv.client.gui;
 
@@ -47,6 +57,10 @@ class Visualisation extends JFrame {
     private StackPane rootNode;
     private ArrayList<StackPane> nodes;
     private HashMap<StackPane, ArrayList> transitions;
+    private static final Color [] transitionColors = new Color [] {
+      Color.BLACK, Color.RED, Color.YELLOW, Color.MAGENTA, Color.PURPLE,
+      Color.LIGHTBLUE, Color.GRAY, Color.BLUE, Color.GREEN, Color.PINK
+    };
 
     private String name;
 
@@ -82,8 +96,16 @@ class Visualisation extends JFrame {
         root = new Group();
         Scene scene = new Scene(root, 500, 500, Color.WHITE);
         addRootNode();
-
+        getAlreadyConnectedPeers();
         return scene;
+    }
+
+    public void getAlreadyConnectedPeers() {
+        /*
+            If we start the Visualisation for a download in progress
+            we need to get the peers already connected.
+        */
+        
     }
 
     public void addNode(String ip) {
@@ -223,7 +245,7 @@ class Visualisation extends JFrame {
       rootNode.getChildren().add(c);
       rootNode.getChildren().add(t);
       rootNode.setLayoutX(550.0f);
-      rootNode.setLayoutY(500.0f);
+      rootNode.setLayoutY(700.0f);
       root.getChildren().add(rootNode);
    }
 
@@ -243,15 +265,15 @@ class Visualisation extends JFrame {
     }
 
     public void peerCommunicationEvent(String ip, boolean dataSent, 
-                                        boolean dataReceived) {
+                                        boolean dataReceived, int messageType) {
         StackPane node = getNodeWithIP(ip);
         if(node != null) {
             ArrayList<Path> paths = transitions.get(node);
             if(dataSent) {
-                showDataMovement(paths.get(0), Color.BLUE);
+                showDataMovement(paths.get(0), transitionColors[messageType + 1]);
             }
             else if(dataReceived) {
-                showDataMovement(paths.get(1), Color.GREEN);
+                showDataMovement(paths.get(1), transitionColors[messageType + 1]);
             }
         }
     }
@@ -293,10 +315,12 @@ class MyCommunicationListener implements PeerCommunicationListener {
         final String ip = e.getIP();
         final boolean dataSent = e.dataSent();
         final boolean dataReceived = e.dataReceived();
+        final int messageType = e.getMessageType();
         Platform.runLater(new Runnable() {
             @Override
             public void run() {
-                parent.peerCommunicationEvent(ip, dataSent, dataReceived);
+                parent.peerCommunicationEvent(ip, dataSent, dataReceived, 
+                                              messageType);
             }
        }); 
     }

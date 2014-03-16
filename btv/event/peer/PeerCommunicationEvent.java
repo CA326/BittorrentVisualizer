@@ -15,13 +15,15 @@ import java.util.EventObject;
 public class PeerCommunicationEvent extends EventObject {
 	private String ip;
 	private boolean dataReceived, dataSent;
+	private int messageType;
 
 	public PeerCommunicationEvent(Object source, String i, boolean dataR, 
-									boolean dataS) {
+									boolean dataS, int m) {
 		super(source);
 		ip = i;
 		dataReceived = dataR;
 		dataSent = dataS;
+		messageType = m;
 	}
 
 	public String getIP() {
@@ -34,5 +36,9 @@ public class PeerCommunicationEvent extends EventObject {
 
 	public boolean dataSent() {
 		return dataSent;
+	}
+
+	public int getMessageType() {
+		return messageType;
 	}
 }

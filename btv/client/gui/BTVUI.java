@@ -8,6 +8,7 @@ Basic Interface Code
 
 package btv.client.gui;
 import btv.download.DLManager;
+import btv.download.utils.ByteCalculator;
 import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
 import btv.event.peer.PeerConnectionListener;
@@ -120,9 +121,10 @@ public class BTVUI extends JFrame {
         tableModel = new DefaultTableModel();
         tableModel.addColumn("Name");
         tableModel.addColumn("Downloaded");
+        tableModel.addColumn("Complete");
         tableModel.addColumn("Peers");
         table = new JTable(tableModel);
-        TableColumn col = table.getColumnModel().getColumn(1);
+        TableColumn col = table.getColumnModel().getColumn(2);
         col.setCellRenderer(new ProgressCellRenderer());
 
         // Listener to handle Double clicks which open a visualisation.
@@ -148,7 +150,7 @@ public class BTVUI extends JFrame {
         downloadManager.addTorrentListener(new MyTorrentListener(), name);
         torrents.put(name, numTorrents);
 
-        tableModel.addRow(new Object [] {name, 0, 0});
+        tableModel.addRow(new Object [] {name, "0", 0, 0});
         numTorrents++;
     }
 
@@ -232,7 +234,8 @@ public class BTVUI extends JFrame {
     class MyTorrentListener implements TorrentListener {
         public void handleTorrentEvent(TorrentEvent e) {
             String name = e.getName();
-            int downloaded = e.getDownloaded();
+            int downloadedPercent = e.getDownloadedPercent();
+            String downloadedBytes = ByteCalculator.convert(e.getDownloadedBytes());
             int connections = e.getConnections();
             int index = -1;
             // Get the index by searching the table rows.
@@ -243,9 +246,9 @@ public class BTVUI extends JFrame {
                     break;
                 }
             }
-
-            tableModel.setValueAt(downloaded, index, 1);
-            tableModel.setValueAt(connections, index, 2);
+            tableModel.setValueAt(downloadedBytes, index, 1);
+            tableModel.setValueAt(downloadedPercent, index, 2);
+            tableModel.setValueAt(connections, index, 3);
         }
     }
 

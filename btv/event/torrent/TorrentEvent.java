@@ -12,37 +12,38 @@ import java.util.EventObject;
 
 public class TorrentEvent extends EventObject {
 	private String name;
-	private int downloaded;
+	private int downloadedPercent;
+	private String downloadedBytes;
 	private int numberOfConnections;
 
-	public TorrentEvent(Object source, String n, int d, int numConnections) {
+	public TorrentEvent(Object source, String n, int d, int numConnections,
+						String bytes) {
 		super(source);
 		name = n;
-		downloaded = d;
+		downloadedPercent = d;
+		downloadedBytes = bytes;
 		numberOfConnections = numConnections;
 	}
 
-	public void setName(String n) {
-		name = n;
-	}
-
-	public void setDownloaded(int d) {
-		downloaded = d;
-	}
 
 	public String getName() {
 		return name;
 	}
 
-	public int getDownloaded() {
-		return downloaded;
+	public int getDownloadedPercent() {
+		return downloadedPercent;
 	}
 
 	public int getConnections() {
 		return numberOfConnections;
 	}
 
+	public String getDownloadedBytes() {
+		return downloadedBytes;
+	}
+
 	public String toString() {
-		return name + " " + downloaded + " Connections: " + numberOfConnections;
+		return name + " " + downloadedPercent + " Connections: " 
+		+ numberOfConnections;
 	}
 }

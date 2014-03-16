@@ -27,6 +27,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import javax.xml.bind.DatatypeConverter;
@@ -62,8 +63,8 @@ public class Peer extends Thread {
     private HashSet<Request> requested;
 
     // Event handling
-    private PeerConnectionListener peerConnectionListener;
-    private PeerCommunicationListener peerCommunicationListener;
+    private ArrayList<PeerConnectionListener> connectionListeners;
+    private ArrayList<PeerCommunicationListener> communicationListeners;
 
     public Peer(String ip1, int port1, Torrent t) {
         /*
@@ -75,6 +76,8 @@ public class Peer extends Thread {
         infoHash = torrent.infoHash();
         peerID = torrent.peerID();
         requested = new HashSet<Request>();
+        connectionListeners = new ArrayList<PeerConnectionListener>();
+        communicationListeners = new ArrayList<PeerCommunicationListener>();
     }
 
     public Peer(Socket s1) {
@@ -194,6 +197,7 @@ public class Peer extends Thread {
                 piece(m);
                 break;
         }
+        peerCommunicationEvent(false, true, m.getID());
     }
 
     private void sendPeerMessage() {
@@ -205,6 +209,7 @@ public class Peer extends Thread {
         if(peerChoking) {
             if(canSend) {
                 new Message(Message.INTERESTED, 1, null).send(out);
+                peerCommunicationEvent(true, false, Message.INTERESTED);
                 canSend = false;
             }
         }
@@ -216,6 +221,7 @@ public class Peer extends Thread {
                     // the connection open.
                     if(System.currentTimeMillis() - pauseStart > 60000) {
                         new Message(Message.KEEP_ALIVE, 0, null).send(out);
+                        peerCommunicationEvent(true, false, Message.KEEP_ALIVE);
                     }
                     Thread.sleep(10000);
                 }
@@ -237,7 +243,7 @@ public class Peer extends Thread {
             Request r = torrent.getNextRequest(this);
             if(r != null) {
                 r.send(out);
-                peerCommunicationEvent(true, false);
+                peerCommunicationEvent(true, false, r.getID());
                 requested.add(r);
                 numOfPendingRequests++;
             }
@@ -266,22 +272,6 @@ public class Peer extends Thread {
         out = new DataOutputStream(s.getOutputStream());
 
         peerConnectingEvent(false, true, false);
-    }
-
-    private void peerConnectingEvent(boolean connecting, boolean connected, 
-                                        boolean disconnected) {
-        /*
-            Inform our listeners that we are connecting.
-        */
-        PeerConnectionEvent e = new PeerConnectionEvent(this, ip, connecting, 
-                                connected, disconnected);
-        peerConnectionListener.handlePeerConnectionEvent(e);
-    }
-
-    private void peerCommunicationEvent(boolean dataSent, boolean dataReceived) {
-        PeerCommunicationEvent e = new PeerCommunicationEvent(this, ip,
-                                                dataReceived, dataSent);
-        peerCommunicationListener.handlePeerEvent(e);
     }
 
     private void performHandShake() throws IOException {
@@ -406,15 +396,8 @@ public class Peer extends Thread {
         if(requested.contains(r)) {
             new Cancel(Message.CANCEL, 13, r.getIndex(), r.getOffset(),
                  r.getBlockLength()).send(out);
+            peerCommunicationEvent(true, false, Message.CANCEL);
         }
-    }
-
-    public void addPeerConnectionListener(PeerConnectionListener p) {
-        peerConnectionListener = p;
-    }
-
-    public void addPeerCommunicationListener(PeerCommunicationListener p) {
-        peerCommunicationListener = p;
     }
 
     /*
@@ -453,11 +436,48 @@ public class Peer extends Thread {
     }
 
     private void piece(Message m) {
-        peerCommunicationEvent(false, true);
         Piece p = (Piece) m;
         numOfPendingRequests--;
         if(numOfPendingRequests == 0)
             canSend = true;
         torrent.piece(p);
+    }
+
+    /*
+        Event handling methods.
+
+    */
+
+    private void peerConnectingEvent(boolean connecting, boolean connected, 
+                                        boolean disconnected) {
+        /*
+            Inform our listeners that we are connecting.
+        */
+        PeerConnectionEvent e = new PeerConnectionEvent(this, ip, connecting, 
+                                connected, disconnected);
+        for(PeerConnectionListener p : connectionListeners) {
+            p.handlePeerConnectionEvent(e);
+        }
+    }
+
+    private void peerCommunicationEvent(boolean dataSent, boolean dataReceived, 
+                                            int messageType) {
+        PeerCommunicationEvent e = new PeerCommunicationEvent(this, ip,
+                                    dataReceived, dataSent, messageType);
+        for(PeerCommunicationListener p : communicationListeners) {
+            p.handlePeerEvent(e);
+        }
+    }
+
+    public void addPeerConnectionListener(PeerConnectionListener p) {
+        if(p != null) {
+            connectionListeners.add(p);
+        }
+    }
+
+    public void addPeerCommunicationListener(PeerCommunicationListener p) {
+        if(p != null) {
+            communicationListeners.add(p);
+        }
     }
 }

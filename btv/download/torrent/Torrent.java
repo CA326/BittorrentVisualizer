@@ -63,6 +63,8 @@ public class Torrent extends Thread {
     private boolean started = false;
     private boolean paused = false;
 
+    private final static int MAX_CONNECTIONS = 10;
+
     // File related vars
     private RandomAccessFile file;
     private File tempFile;
@@ -257,7 +259,7 @@ public class Torrent extends Thread {
         
         // Now parse the peers
         for(int i = 0; i < binaryPeer.length(); i += 12) {
-            if(peers.size() <= 25) {
+            if(peers.size() < MAX_CONNECTIONS) {
                 addPeer(Peer.parse(binaryPeer.substring(i, i + 12), this));
             }
             else {
@@ -454,6 +456,7 @@ public class Torrent extends Thread {
                 bitfield.setBit(index);
             }
             left = "" + (Integer.parseInt(left) - block.length);
+            downloaded = "" + (Integer.parseInt(downloaded) + block.length);
             double percent = (Double.parseDouble(left) / totalLength) * 100;
             percent = 100 - percent;
             percentDownloaded = (int) percent;
@@ -499,6 +502,7 @@ public class Torrent extends Thread {
         Request toCancel = new Request(Message.REQUEST, 13, p.getIndex()
                     , p.getOffset(), p.getBlock().length);
 
+        // Synchronized?
         for(Peer peer : peers) {
             peer.cancel(toCancel);
         }
@@ -611,6 +615,7 @@ public class Torrent extends Thread {
 
     /*
         Visualisation related methods.
+        Need to add these to already connected peers.
     */
 
     public void addPeerConnectionListener(PeerConnectionListener p) {
