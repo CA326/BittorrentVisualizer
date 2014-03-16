@@ -11,6 +11,8 @@
 
 package btv.download.utils;
 
+import java.text.DecimalFormat;
+
 public class ByteCalculator {
 	private static final int KB = 1024;
 	private static final int MB = 1048576;
@@ -18,20 +20,22 @@ public class ByteCalculator {
 
 	public static String convert(String bytes) {
 		int b = Integer.parseInt(bytes);
+		DecimalFormat df = new DecimalFormat("#.##");
 		if(b < KB) {
 			return bytes + "bytes";
 		}
 		else if(b < MB) {
-			double d = b / KB;
-			return d + "KB";
+			double d = (double) b / KB;
+
+			return df.format(d).toString() + "KB";
 		}
 		else if(b < GB) {
-			double d = b / MB;
-			return d + "MB";
+			double d = (double) b / MB;
+			return df.format(d).toString() + "MB";
 		}
 		else {
-			double d = b / GB;
-			return d + "GB";
+			double d = (double) b / GB;
+			return df.format(d).toString() + "GB";
 		}
 	}
 }

@@ -609,6 +609,12 @@ public class Torrent extends Thread {
         relayer.addTorrentListener(t);
     }
 
+    public ArrayList<Peer> getConnections() {
+        synchronized(peers) {
+            return peers;
+        }
+    }
+
     /*
         End of download manager methods -------------------
     */
@@ -620,10 +626,20 @@ public class Torrent extends Thread {
 
     public void addPeerConnectionListener(PeerConnectionListener p) {
         peerConnectionListener = p;
+        synchronized(peers) {
+            for(Peer peer : peers) {
+                peer.addPeerConnectionListener(peerConnectionListener);
+            }
+        }
     }
 
     public void addPeerCommunicationListener(PeerCommunicationListener p) {
         peerCommunicationListener = p;
+        synchronized(peers) {
+            for(Peer peer : peers) {
+                peer.addPeerCommunicationListener(peerCommunicationListener);
+            }
+        }
     }
 
 

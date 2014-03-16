@@ -12,11 +12,13 @@
 package btv.download;
 
 import btv.download.torrent.Torrent;
+import btv.download.peer.Peer;
 import btv.event.torrent.TorrentListener;
 import btv.event.peer.PeerConnectionListener;
 import btv.event.peer.PeerCommunicationListener;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Set;
 
 public class DLManager {
@@ -99,6 +101,14 @@ public class DLManager {
 			}
 		}
 
+		return result;
+	}
+
+	public ArrayList<Peer> getConnections(String name) {
+		ArrayList<Peer> result = null;
+		if(downloads.containsKey(name)) {
+			result = downloads.get(name).getConnections();
+		}
 		return result;
 	}
 

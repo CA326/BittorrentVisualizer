@@ -20,6 +20,7 @@ import btv.event.peer.PeerConnectionListener;
 import btv.event.peer.PeerConnectionEvent;
 import btv.event.peer.PeerCommunicationListener;
 import btv.event.peer.PeerCommunicationEvent;
+import btv.download.peer.Peer;
 
 import javafx.embed.swing.JFXPanel;
 import javafx.application.Platform;
@@ -44,22 +45,32 @@ import javafx.beans.value.*;
 import javafx.animation.Animation.Status;
 import javafx.util.Duration;
 
+import javafx.event.EventHandler;
+import javafx.scene.input.MouseEvent;
+
 import javax.swing.*;
+import java.awt.event.WindowListener;
+import java.awt.event.WindowEvent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Set;
 
-class Visualisation extends JFrame {
+class Visualisation extends JFrame implements WindowListener {
     private BTVUI parent;
     private JFXPanel panel;
-    private Group root;
+    private Group root; // The group that will hold our nodes.
+    private Group key; // The group that will hold the key.
     private StackPane rootNode;
     private ArrayList<StackPane> nodes;
     private HashMap<StackPane, ArrayList> transitions;
     private static final Color [] transitionColors = new Color [] {
       Color.BLACK, Color.RED, Color.YELLOW, Color.MAGENTA, Color.PURPLE,
       Color.LIGHTBLUE, Color.GRAY, Color.BLUE, Color.GREEN, Color.PINK
+    };
+    private static final String [] messageTypes = new String [] {
+      "Keep Alive", "Choke", "Unchoke", "Interested", "Not interested",
+      "Have", "Bitfield", "Request", "Piece", "Cancel"
     };
 
     private String name;
@@ -77,7 +88,6 @@ class Visualisation extends JFrame {
         panel = new JFXPanel();
         add(panel);
         setSize(1100, 1000);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setVisible(true);
 
 
@@ -94,10 +104,53 @@ class Visualisation extends JFrame {
             Set up our scene with the root BTV node shown.
         */
         root = new Group();
+        key = new Group();
         Scene scene = new Scene(root, 500, 500, Color.WHITE);
         addRootNode();
+        setupKey();
         getAlreadyConnectedPeers();
         return scene;
+    }
+
+    public void setupKey() {
+
+        key.setOpacity(0.1);
+        StackPane connecting = createNode(40.0f, 30.0f, 20.0f, "Connecting",
+                              Color.WHITE, Color.RED, Color.BLACK);
+        StackPane connected = createNode(100.0f, 30.0f, 20.0f, "Connected",
+                                Color.WHITE, Color.GREEN, Color.BLACK);
+        key.getChildren().addAll(connecting, connected);
+
+        for(int i = 0; i < messageTypes.length; i++) {
+            StackPane messageType = createNode(160.0f + (i * 80.0f), 30.0f, 
+                          60.0f, 60.0f, messageTypes[i], transitionColors[i],
+                                  transitionColors[i], Color.WHITE);
+            key.getChildren().add(messageType);
+        }
+
+        key.addEventFilter(MouseEvent.MOUSE_ENTERED, new EventHandler<MouseEvent>() {
+            public void handle(MouseEvent e) {
+                FadeTransition ft = new FadeTransition(Duration.millis(1000), key);
+                ft.setFromValue(key.getOpacity());
+                ft.setToValue(1.0);
+                ft.setCycleCount(1);
+                ft.setAutoReverse(false);
+                ft.play();
+            } 
+        });
+
+        key.addEventFilter(MouseEvent.MOUSE_EXITED, new EventHandler<MouseEvent>() {
+            public void handle(MouseEvent e) {
+                FadeTransition ft = new FadeTransition(Duration.millis(1000), key);
+                ft.setFromValue(key.getOpacity());
+                ft.setToValue(0.1);
+                ft.setCycleCount(1);
+                ft.setAutoReverse(false);
+                ft.play();
+            } 
+        });
+
+        root.getChildren().add(key);
     }
 
     public void getAlreadyConnectedPeers() {
@@ -105,25 +158,64 @@ class Visualisation extends JFrame {
             If we start the Visualisation for a download in progress
             we need to get the peers already connected.
         */
-        
+        ArrayList<Peer> alreadyConnected = parent.getConnections(name);
+        for(Peer p : alreadyConnected) {
+            if(p.connected()) {
+                addPeer(p.getIP());
+                nodeConnection(p.getIP());
+            }
+        }
     }
 
-    public void addNode(String ip) {
+    public StackPane createNode(double x, double y, double r, String text, 
+                              Color fill, Color outline, Color textColor) {
+      /*
+          Create a StackPane with a circle and text to add to the window.
+      */
+
       Circle c = new Circle();
-      c.setRadius(40.0f);
-      c.setFill(Color.WHITE);
-      c.setStroke(Color.RED);
-      Text  t  =  new  Text(ip);
+      c.setRadius(r);
+      c.setFill(fill);
+      c.setStroke(outline);
+      Text t = createText(text, textColor);
+      Node [] nodes = new Node [] {c, t};
+      StackPane s = createStackPane(nodes);
+      s.setLayoutX(x);
+      s.setLayoutY(y);
+      return s;
+   }
+
+   public StackPane createNode(double x, double y, double len, double wid,
+                        String text, Color fill, Color outline, Color textColor) {
+      Rectangle r = new Rectangle();
+      r.setWidth(wid);
+      r.setHeight(len);
+      r.setFill(fill);
+      r.setStroke(outline);
+      Text t = createText(text, textColor);
+      Node [] nodes = new Node [] {r, t};
+      StackPane s = createStackPane(nodes);
+      s.setLayoutX(x);
+      s.setLayoutY(y);
+      return s;
+
+   }
+
+   public Text createText(String text, Color color) {
+      Text  t  =  new  Text(text);
       t.setBoundsType(TextBoundsType.VISUAL);
       t.setFont(Font.font("Verdana", FontWeight.BOLD, 8));
-      StackPane s = new StackPane();
-      s.getChildren().add(c);
-      s.getChildren().add(t);
-      s.setLayoutX((80.0f * nodes.size()) + 50.0f);
-      s.setLayoutY(100.0f);
-      root.getChildren().add(s);
-      nodes.add(s);
+      t.setFill(color);
+      return t;
+   } 
 
+   public StackPane createStackPane(Node [] nodes) {
+      StackPane s = new StackPane();
+      s.getChildren().addAll(nodes);
+      return s;
+   }
+
+   public void addPaths(StackPane s) {
       Path to = new Path();
       MoveTo moveTo = new MoveTo();
       moveTo.setX(rootNode.getLayoutX() + 40.0f);
@@ -155,7 +247,16 @@ class Visualisation extends JFrame {
       ArrayList<Path> paths = new ArrayList<Path>();
       paths.add(to); paths.add(from);
       transitions.put(s, paths);
+   }
 
+   public void addPeer(String ip) {
+      double x = (80.0f * nodes.size()) + 50.0f;
+      double y = 100.0f;
+      StackPane s = createNode(x, y, 40.0f, ip, Color.WHITE, Color.RED,
+                               Color.BLACK);
+      root.getChildren().add(s);
+      nodes.add(s);
+      addPaths(s);
    }
 
    public void nodeConnection(String ip) {
@@ -177,7 +278,6 @@ class Visualisation extends JFrame {
    }
 
    public void nodeDisconnection(String ip) {
-        System.out.println("Removing node: " + ip);
         StackPane node = getNodeWithIP(ip);
         if(node != null) {
             ArrayList<Path> paths = transitions.get(node);
@@ -234,25 +334,15 @@ class Visualisation extends JFrame {
    }
 
    public void addRootNode() {
-      Circle c = new Circle();
-      c.setRadius(40.0f);
-      c.setFill(Color.WHITE);
-      c.setStroke(Color.BLACK);
-      Text  t  =  new  Text("BTV");
-      t.setBoundsType(TextBoundsType.VISUAL);
-      t.setFont(Font.font("Verdana", FontWeight.BOLD, 8));
-      rootNode = new StackPane();
-      rootNode.getChildren().add(c);
-      rootNode.getChildren().add(t);
-      rootNode.setLayoutX(550.0f);
-      rootNode.setLayoutY(700.0f);
+      rootNode = createNode(550.0f, 700.0f, 40.0f, "BTV", Color.WHITE, 
+                            Color.BLACK, Color.BLACK);
       root.getChildren().add(rootNode);
    }
 
    public void peerConnectionEvent(String ip, boolean connecting, 
                                 boolean connected, boolean disconnected) {
         if(connecting) {
-            addNode(ip);
+            addPeer(ip);
         }
         else if(connected) {
             // Draw connection lines and change colour to green
@@ -276,6 +366,46 @@ class Visualisation extends JFrame {
                 showDataMovement(paths.get(1), transitionColors[messageType + 1]);
             }
         }
+    }
+
+    public void windowClosing(WindowEvent e) {
+        dispose();
+    }
+
+    public void windowClosed(WindowEvent e) {
+        
+    }
+
+    public void windowOpened(WindowEvent e) {
+        
+    }
+
+    public void windowIconified(WindowEvent e) {
+        
+    }
+
+    public void windowDeiconified(WindowEvent e) {
+        
+    }
+
+    public void windowActivated(WindowEvent e) {
+        
+    }
+
+    public void windowDeactivated(WindowEvent e) {
+        
+    }
+
+    public void windowGainedFocus(WindowEvent e) {
+        
+    }
+
+    public void windowLostFocus(WindowEvent e) {
+        
+    }
+
+    public void windowStateChanged(WindowEvent e) {
+        
     }
 }
 

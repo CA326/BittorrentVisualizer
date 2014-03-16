@@ -39,6 +39,7 @@ public class Peer extends Thread {
     private Socket s = null;
     private DataInputStream in;
     private DataOutputStream out;
+    private boolean connected = false;
     
     // Are we connecting or connection received?
     // Needed to determine who sends handshake first.
@@ -81,6 +82,7 @@ public class Peer extends Thread {
     }
 
     public Peer(Socket s1) {
+        connected = true;
         s = s1;
         requested = new HashSet<Request>();
     }
@@ -272,6 +274,7 @@ public class Peer extends Thread {
         out = new DataOutputStream(s.getOutputStream());
 
         peerConnectingEvent(false, true, false);
+        connected = true;
     }
 
     private void performHandShake() throws IOException {
@@ -368,6 +371,7 @@ public class Peer extends Thread {
             System.out.println("Could not close connections");
         }
         peerConnectingEvent(false, false, true);
+        connected = false;
     }
 
     public void pause() {
@@ -386,6 +390,14 @@ public class Peer extends Thread {
 
     public String toString() {
         return ip + ":" + port;
+    }
+
+    public String getIP() {
+        return ip;
+    }
+
+    public boolean connected() {
+        return connected;
     }
 
     public boolean canDownload(int i) {

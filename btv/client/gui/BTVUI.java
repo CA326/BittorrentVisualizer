@@ -8,6 +8,7 @@ Basic Interface Code
 
 package btv.client.gui;
 import btv.download.DLManager;
+import btv.download.peer.Peer;
 import btv.download.utils.ByteCalculator;
 import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
@@ -32,6 +33,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.io.File;
 
 public class BTVUI extends JFrame {
@@ -178,6 +180,10 @@ public class BTVUI extends JFrame {
 
     public void addPeerCommunicationListener(PeerCommunicationListener p, String name) {
         downloadManager.addPeerCommunicationListener(p, name);
+    }
+
+    public ArrayList<Peer> getConnections(String name) {
+        return downloadManager.getConnections(name);
     }
 
     class ButtonListener implements ActionListener {
