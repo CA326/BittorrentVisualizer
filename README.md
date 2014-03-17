@@ -28,8 +28,8 @@ Currently: Debugging, improving performance. Visualisation window is a bit untid
 - ~~Group classes in packages.~~
 
 ###More TODO(Further away):
-- Event handling.
-- GUI
+- ~~Event handling.~~
+- ~~GUI~~
 
 ### Issues
 #### 25th February 2014
@@ -43,3 +43,7 @@ Currently: Debugging, improving performance. Visualisation window is a bit untid
 
 #### 10th March 2014
 - ~~Some concurrency issues when downloading multiple torrents.~~ Fixed by using EventRelayer class
+
+#### 17th March 2014
+- Visualisation stutters when opened if the download is already in progress.
+- If torrent is removed we need to close Visualisation window
