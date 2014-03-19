@@ -1,20 +1,4 @@
-/*
-    Class Torrent.
-    Responsibilities: 
-        Get peer list from tracker.
-        Set up Peers.
-        Decide which pieces to download.
-        Write fully downloaded pieces to disk.
-        Keep track of download/upload speed.
-        More...
-
-    Author: Stephan McLean
-    Date: 6th February 2014
-
-*/
-
 package btv.download.torrent;
-
 
 import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
@@ -40,6 +24,15 @@ import java.io.IOException;
 import java.io.FileInputStream;
 import java.io.File;
 import java.math.BigInteger;
+/**
+*    This class represents a BitTorrent Torrent. This class is used to
+*    parse the meta-info file, contact trackers and set up our Peers
+*    which will download the Torrent files.
+*
+*    @author Stephan McLean
+*    @date 6th February 2014
+*
+*/
 public class Torrent extends Thread {
     private Map metainfo, infoDict;
     private String hash;
@@ -76,6 +69,15 @@ public class Torrent extends Thread {
     private PeerConnectionListener peerConnectionListener;
     private PeerCommunicationListener peerCommunicationListener;
 
+    /**
+    *   This constructor will set up a new Torrent. When a Torrent is
+    *   created the meta-info will be parsed, and the directory to store the
+    *   Torrent will be created. A temporary file used for downloading will
+    *   also be created.
+    *
+    *   @param fileName     The name of the meta-info file.
+    *
+    */
     public Torrent(String fileName) {
 
         try {
@@ -103,6 +105,9 @@ public class Torrent extends Thread {
     }
 
     private void setUpFiles() {
+        /*
+            Create directories and create the temporary download file.
+        */
         torrentFiles = new ArrayList<TorrentFile>();
         String tempFilePath;
 
@@ -166,7 +171,7 @@ public class Torrent extends Thread {
         }
     }
 
-    public void contactTracker() {
+    private void contactTracker() {
         /*
             Set up our tracker and retrieve the response.
             We must then parse the response to retrieve our Peer list.
@@ -201,7 +206,7 @@ public class Torrent extends Thread {
         }
     }
 
-    public void parseTracker() {
+    private void parseTracker() {
         /*
             For now we are only dealing with HTTP trackers.
             This method will search the meta-info file for a HTTP Tracker
@@ -224,7 +229,6 @@ public class Torrent extends Thread {
                     }
                 }
             }
-            // If no announce-list found we need to deal with that here.
         }
     }
 
@@ -233,18 +237,11 @@ public class Torrent extends Thread {
             peerID, port, downloaded, uploaded, left);
     }
 
-    public void addPeer(Peer p) {
+    private void addPeer(Peer p) {
         synchronized(peers) {
             peers.add(p);
             p.addPeerConnectionListener(peerConnectionListener);
             p.addPeerCommunicationListener(peerCommunicationListener);
-        }
-    }
-
-    public void removePeer(Peer p) {
-        synchronized(peers) {
-            p.closePeerConnection();
-            peers.remove(p);
         }
     }
 
@@ -295,12 +292,18 @@ public class Torrent extends Thread {
     }
 
     private void startPeers() {
+        /*
+            Start our peers downloading.
+        */
         for(Peer p : peers) {
             p.start();
         }
     }
 
     private void closePeerConnections() {
+        /*
+            Close all peer connections.
+        */
         synchronized(peers) {
             for(Peer p : peers) {
                 p.closePeerConnection();
@@ -470,7 +473,7 @@ public class Torrent extends Thread {
         }
     }
 
-    public int getBlockSize() {
+    private int getBlockSize() {
         /*
             The size of a block to download from the client.
             The most commonly used is 2^14 (16kb)
@@ -494,6 +497,20 @@ public class Torrent extends Thread {
         return null;
     }
 
+    /**
+    *   Close a peer connection and remove the peer from our list 
+    *   of connections.
+    *
+    *   @param p    The peer to remove.
+    *
+    */
+    public void removePeer(Peer p) {
+        synchronized(peers) {
+            p.closePeerConnection();
+            peers.remove(p);
+        }
+    }
+
     private void cancelPiece(Piece p) {
         /*
             During end game we send requests for pieces to more than one peer.
@@ -502,7 +519,6 @@ public class Torrent extends Thread {
         Request toCancel = new Request(Message.REQUEST, 13, p.getIndex()
                     , p.getOffset(), p.getBlock().length);
 
-        // Synchronized?
         for(Peer peer : peers) {
             peer.cancel(toCancel);
         }
@@ -513,80 +529,127 @@ public class Torrent extends Thread {
     */
 
     /*
-        Getters & Setters ------------
+        Getters & Setters -----------------------------------------------------
     */
 
+    /**
+    *   @return     The SHA1 hash of the info dictionary in the meta-info file.
+    */
     public String infoHash() {
         return hash;
     }
 
+    /**
+    *   @return     The name of this Torrent.
+    */
     public String name() {
         return name;
     }
 
+    /**
+    *   @return     The Peer ID of our client.
+    */
     public String peerID() {
         return peerID;
     }
 
+    /**
+    *   @return     The port we are listening for incoming connections on.
+    */
     public String port() {
         return port;
     }
 
+    /**
+    *   @return     The number of bytes downloaded by this Torrent.
+    */
     public String downloaded() {
         return downloaded;
     }
 
+    /**
+    *   @return     The percentage of the download completed by this Torrent.
+    */
     public int percentDownloaded() {
         return percentDownloaded;
     }
 
+    /**
+    *   @return     The number of bytes uploaded by this Torrent.
+    */
     public String uploaded() {
         return uploaded;
     }
 
+    /**
+    *   @return     The number of bytes left to download.
+    */
     public int left() {
         return Integer.parseInt(left);
     }
 
+    /**
+    *   @return     The number of pieces in this Torrent.
+    */
     public int getNumberOfPieces() {
         return numberOfPieces;
     }
 
+    /**
+    *   @return     The length of a piece in this Torrent.
+    */
     public int getPieceLength() {
         return pieceLength;
     }
 
+    /**
+    *   @return     True if this Torrent has finished downloading,
+    *               false otherwise.
+    */
     public boolean isDownloaded() {
         
         return Integer.parseInt(left) <= 0;
     }
 
+    /**
+    *   @return     The number of peers this Torrent is connected to.
+    */
     public int numberOfConnections() {
         synchronized(peers) {
             return peers.size();
         }
     }
 
-    public String toString() {
-        return hash + " " + percentDownloaded;
-    }
-
+    /**
+    *   @return     True if this Torrent is currently downloading, 
+    *               false otherwise.
+    */
     public boolean isStarted() {
         return started;
     }
 
+    /**
+    *   @return     True if this Torrent is paused, false otherwise.
+    */
     public boolean paused() {
         return paused;
     }
 
     /*
-        End of Getters & Setters ----------------
+        End of Getters & Setters ----------------------------------------------
     */
 
     /*
-        Methods to be called by the download manager. -----
+        Methods to be called by the download manager. -------------------------
     */
 
+    /**
+    *   Pause this Torrent. Pausing a Torrent involves pausing all of
+    *   it's actively downloading Peers.
+    *   
+    *   @see btv.download.DLManager#pause(String)
+    *   @see btv.download.peer.Peer#pause()
+    */
     public void pause() {
         paused = true;
         synchronized(peers) {
@@ -596,6 +659,9 @@ public class Torrent extends Thread {
         }
     }
 
+    /**
+    *   This method is called on a paused Torrent which we wish to resume.
+    */
     public void resumeDownload() {
         paused = false;
         synchronized(peers) {
@@ -605,25 +671,35 @@ public class Torrent extends Thread {
         }
     }
 
+    /**
+    *   Add a TorrentListener to this Torrent so information
+    *   about this Torrent can be relayed to event handling classes.
+    *
+    *   @param t    The TorrentListener to add.
+    */
     public void addTorrentListener(TorrentListener t) {
-        relayer.addTorrentListener(t);
+        if(t != null) {
+            relayer.addTorrentListener(t);
+        }
     }
 
+    /**
+    *   @return     The list of peers this Torrent is currently connected to.
+    */
     public ArrayList<Peer> getConnections() {
         synchronized(peers) {
             return peers;
         }
     }
 
-    /*
-        End of download manager methods -------------------
+    /**
+    *   Add a PeerConnectionListener to this Torrent. This involves
+    *   adding this listener to every connected peer as well as
+    *   adding this listener to peers who connect in the future.
+    *
+    *   @param p    The PeerConnectionListener to add.
+    *   @see btv.event.peer.PeerConnectionListener
     */
-
-    /*
-        Visualisation related methods.
-        Need to add these to already connected peers.
-    */
-
     public void addPeerConnectionListener(PeerConnectionListener p) {
         peerConnectionListener = p;
         synchronized(peers) {
@@ -633,6 +709,15 @@ public class Torrent extends Thread {
         }
     }
 
+    /**
+    *   Add a PeerCommunicationListener to this Torrent. This involves
+    *   adding this listener to the list of currently connected Peers
+    *   as well as adding this listener to Peers who connect in the future.
+    *
+    *   @param p    The PeerCommunicationListener to add.
+    *   @see btv.event.peer.PeerCommunicationListener
+    *
+    */
     public void addPeerCommunicationListener(PeerCommunicationListener p) {
         peerCommunicationListener = p;
         synchronized(peers) {
@@ -642,9 +727,7 @@ public class Torrent extends Thread {
         }
     }
 
-
-    public static void main(String [] args) {
-        Torrent t = new Torrent(args[0]);
-        t.start();
-    }
+    /*
+        End of download manager methods ---------------------------------------
+    */
 }

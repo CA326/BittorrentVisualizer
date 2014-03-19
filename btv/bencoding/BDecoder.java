@@ -1,24 +1,36 @@
-/*
-
-	Class used to decode bencoded torrent files.
-
-	Author: Stephan McLean
-
-*/
-
 package btv.bencoding;
 
 import java.util.*;
 import java.io.*;
+
+/** 
+*	This class will decode bencoded information.
+*
+*	@author Stephan McLean
+*
+*/
 public class BDecoder {
 	private static String in = null;
 
+	private BDecoder() {}
+
+	/**
+	*	Decodes a bencoded String and returns either a String, 
+	*	Integer, List of Map
+	*
+	*	@param data  The bencoded information to decode.
+	*	@return 	 The decoded data in the form of a String, Integer,
+	*				 List or Map
+	*	@throws BDecodingException  If the end of the data is reached
+	*								when not expected or if an unexpected 
+	*								characted is encountered.
+	*/
 	public static Object decode(String data) throws BDecodingException {
 		in = data;
 		return readItem(readChar());
 	}
 
-	static String readString(int length) throws BDecodingException {
+	private static String readString(int length) throws BDecodingException {
 		// Read a string from in given the length
 		String result = "";
 	
@@ -30,7 +42,7 @@ public class BDecoder {
 		return result;
 	}
 
-	static int readInt() throws BDecodingException {
+	private static int readInt() throws BDecodingException {
 		// Read the int until we hit an "e"
 	
 		String intToParse = "";
@@ -44,7 +56,7 @@ public class BDecoder {
 		return Integer.parseInt(intToParse);
 	}
 
-	static ArrayList<Object> readList() throws BDecodingException {
+	private static ArrayList<Object> readList() throws BDecodingException {
 		// Read a list of items from the file.
 		ArrayList<Object> items = new ArrayList<Object>();
 	
@@ -58,7 +70,7 @@ public class BDecoder {
 		return items;
 	}
 
-	static Map readDictionary() throws BDecodingException {
+	private static Map readDictionary() throws BDecodingException {
 		Map m = new LinkedHashMap();
 		Object key, value;
 		char c = readChar();
@@ -74,10 +86,10 @@ public class BDecoder {
 	}
 
 	/*
-	Helper methods ------------------------------
+		Helper methods ------------------------------
 
 	*/
-	static Object readItem(char c) throws BDecodingException {
+	private static Object readItem(char c) throws BDecodingException {
 		/*
 			Return an appropriate item based on c having been read
 			from the file.
@@ -112,7 +124,7 @@ public class BDecoder {
 		return o;
 	}
 
-	static char readChar() throws BDecodingException {
+	private static char readChar() throws BDecodingException {
 		// Remove and return next character from the data
 		if(in.length() > 0) {
 			char c = in.charAt(0);
@@ -124,7 +136,7 @@ public class BDecoder {
 		}
 	}
 
-	static String getStringLength() throws BDecodingException {
+	private static String getStringLength() throws BDecodingException {
 	
 	
 		String result = "";

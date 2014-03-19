@@ -1,8 +1,9 @@
-/*Author: Kevin Sweeney
+/*
+    Author: Kevin Sweeney
 
-Date: 10th March 2014
+    Date: 10th March 2014
 
-Basic Interface Code
+    Basic Interface Code
 
 */
 
@@ -36,7 +37,7 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.io.File;
 
-public class BTVUI extends JFrame {
+class BTVUI extends JFrame {
 
 
     private DLManager downloadManager;
@@ -287,8 +288,6 @@ public class BTVUI extends JFrame {
     public static void main(String[] args) {
 
         SwingUtilities.invokeLater(new Runnable() {
-
-
             public void run() {
                 BTVUI b = new BTVUI();
                 b.setVisible(true);

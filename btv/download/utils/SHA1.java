@@ -1,17 +1,24 @@
 package btv.download.utils;
 import java.security.*;
-public class SHA1 {
-    /*
-     * A convenience class for generating a SHA1 checksum for a string.
-     * To use this class:
-     * 
-     * String myString = "blah blah blah";
-     * String cs = SHA1.hexdigest(myString);
-     *
-     * This class came from http://khaidoan.wikidot.com/java-sha1
-     *
-     */
 
+/*
+*   A convenience class for generating a SHA1 checksum for a string.
+*   To use this class:
+* 
+*   String myString = "blah blah blah";
+*   String cs = SHA1.hexdigest(myString);
+*
+*   This class came from http://khaidoan.wikidot.com/java-sha1
+*
+*/
+public class SHA1 {
+    
+    /**
+    *   Get the SHA1 hex digest of a given String.
+    *
+    *   @param text     The text to get the SHA1 value of.
+    *   @return         The SHA1 hex digest of the given String
+    */
     public static String hexdigest(String text) throws Exception {
         MessageDigest md;
         md = MessageDigest.getInstance("SHA-1");

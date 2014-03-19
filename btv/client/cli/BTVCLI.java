@@ -14,7 +14,7 @@ import btv.event.torrent.TorrentListener;
 
 import java.util.*;
 
-public class BTVCLI {
+class BTVCLI {
 	private DLManager d;
 	private HashMap<Integer, String> torrents;
 	private int numTorrents = 0;

@@ -1,18 +1,27 @@
-/*
-	This class will take Strings, ints, Lists
-	& Maps and return a bencoded String.
-
-	Author: Stephan McLean
-
-*/
-
 package btv.bencoding;
 
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
+
+/**
+*	This class will bencode Strings, Lists, Integers and Maps.
+*
+*	@author Stephan McLean
+*
+*/
 public class BEncoder {
+
+	private BEncoder() {}
 	
+	/**
+	*	Returns a bencoded String representation of a String, Integer
+	*	List or Map.
+	*
+	*	@param o  The data to be bencoded.
+	*	@return   A bencoded String.
+	*
+	*/
 	public static String bencode(Object o) {
 		if(o instanceof String)
 			return bencode((String) o);
@@ -24,15 +33,15 @@ public class BEncoder {
 			return bencode((Map) o);
 	}
 	
-	public static String bencode(String s) {
+	private static String bencode(String s) {
 		return s.length() + ":" + s;
 	}
 	
-	public static String bencode(int n) {
+	private static String bencode(int n) {
 		return "i" + n + "e";
 	}
 	
-	public static String bencode(ArrayList<Object> a) {
+	private static String bencode(ArrayList<Object> a) {
 		String result = "l";
 	
 		for(int i = 0; i < a.size(); i++) {
@@ -42,7 +51,7 @@ public class BEncoder {
 		return result + "e";
 	}
 	
-	public static String bencode(Map m) {
+	private static String bencode(Map m) {
 		String result = "d";
 	
 		Set<Object> keys = m.keySet();

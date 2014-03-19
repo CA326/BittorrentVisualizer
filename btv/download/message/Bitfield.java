@@ -1,19 +1,26 @@
-/*
-    Class Bitfield.
-
-    Responsibilities:
-        Represent a Bittorrent Bitfield.
-        Allow bits to be set in the bitfield
-        Check for set bits.
-        More...
-*/
-
 package btv.download.message;
 
 import javax.xml.bind.DatatypeConverter;
+
+/**
+*   This class represents a Bitfield message.
+*   BitTorrent peers send Bitfield messages to inform other peers
+*   about the parts of the file they have
+*
+*   @author Stephan McLean
+*   @see btv.download.message.Message
+*/
 public class Bitfield extends Message {
     private char [] bitfield;
 
+    /**
+    *   Constructor to set up a new Bitfield message.
+    *
+    *   @param id   The ID of the Bitfield message
+    *   @param length   The length of the Bitfield message
+    *   @param payload  The payload of the bitfield message.
+    *
+    */
     public Bitfield(int id, int length, byte [] payload) {
         super(id, length, payload);
 
@@ -32,14 +39,21 @@ public class Bitfield extends Message {
         bitfield = binary.toCharArray();
     }
 
+    /**
+    *   @return The byte array representation of this Bitfield
+    */
     public byte [] getBitfield() {
         return super.getPayload();
     }
 
+    /**
+    *   Check if the bit at position {@code i} is set in this Bitfield
+    *
+    *   @param i    The position in the Bitfield to check.
+    *   @return     True if the bit at position {@code i} is set,
+    *               false otherwise.
+    */
     public boolean bitSet(int i) {
-        /*
-            Is bit at index i set?
-        */
         if(i >= bitfield.length || i < 0) {
             return false;
         }
@@ -48,14 +62,13 @@ public class Bitfield extends Message {
         }
     }
 
+    /**
+    *   Set the bit at position {@code i} in this Bitfield
+    *
+    *   @param i    The position of the bit to set
+    *
+    */
     public void setBit(int i) {
-        /*
-            Set bit at index i.
-        */
         bitfield[i] = '1';
-    }
-
-    public String toString() {
-        return new String(bitfield);
     }
 }

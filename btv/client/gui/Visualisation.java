@@ -10,9 +10,7 @@
     bittorrent messages. PeerCommunicationEvents have a message type
     which we use to get the colour of the transition from a predefined array.
 
-    TODO: Need to take into account, viewing visualisation in the 
-    middle of a download. Need to get list of already connected peers.
-
+    Author: Kevin Sweeney
 */
 package btv.client.gui;
 
@@ -65,7 +63,7 @@ class Visualisation extends JFrame implements WindowListener {
     private ArrayList<StackPane> nodes;
     private HashMap<StackPane, ArrayList> transitions;
     private static final Color [] transitionColors = new Color [] {
-      Color.BLACK, Color.RED, Color.YELLOW, Color.MAGENTA, Color.PURPLE,
+      Color.BLACK, Color.RED, Color.ORANGE, Color.MAGENTA, Color.PURPLE,
       Color.LIGHTBLUE, Color.GRAY, Color.BLUE, Color.GREEN, Color.PINK
     };
     private static final String [] messageTypes = new String [] {

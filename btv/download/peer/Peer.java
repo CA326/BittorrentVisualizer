@@ -1,20 +1,3 @@
-/*
-    Class Peer.
-    Responsibilities:
-        Communicate with a remote peer.
-        Request pieces.
-        Receive pieces.
-        Send pieces to the associated torrent to be written to the disk.
-
-        TODO:
-            1. A lot of work on efficiency needs to be done.
-            2. We need to catch exception in the run method so the thread can exit 
-            rather than catching them in the various different methods.
-
-    Author: Stephan McLean
-    Date: 6th February 2014
-*/
-
 package btv.download.peer;
 import btv.download.torrent.Torrent;
 import btv.download.message.*;
@@ -31,6 +14,18 @@ import java.util.ArrayList;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import javax.xml.bind.DatatypeConverter;
+
+/**
+*    This class represents a BitTorrent peer. This class will 
+*    set up a connection with a remote peer and download pieces of the 
+*    Torrent it is associated with until the Torrent is fully downloaded.
+*    This class will also send events to event listeners when it is connecting
+*    to the Peer or when it is communicating with the Peer.
+*    
+*
+*    @author Stephan McLean
+*    @date 6th February 2014
+*/
 public class Peer extends Thread {
     private String ip;
     private int port;
@@ -67,10 +62,16 @@ public class Peer extends Thread {
     private ArrayList<PeerConnectionListener> connectionListeners;
     private ArrayList<PeerCommunicationListener> communicationListeners;
 
+    /**
+    *   This is the constructor used when we are parsing peers from
+    *   a tracker response.
+    *
+    *   @param ip1  The IP address of this peer.
+    *   @param port1    The port used to conenct to this peer.
+    *   @param t        The Torrent this Peer is associated with.
+    *
+    */
     public Peer(String ip1, int port1, Torrent t) {
-        /*
-            Constructor used when tracker sends peers as a Map.
-        */
         ip = ip1;
         port = port1;
         torrent = t;
@@ -81,19 +82,26 @@ public class Peer extends Thread {
         communicationListeners = new ArrayList<PeerCommunicationListener>();
     }
 
+    /**
+    *   This constructor is used when our {@code PeerListener}
+    *   receives a new connection.
+    *
+    *   @param s1   The socket the {@code PeerListener} has set up.
+    */
     public Peer(Socket s1) {
         connected = true;
         s = s1;
         requested = new HashSet<Request>();
     }
 
+    /**
+    *    Given a String containing 6 bytes, parse these bytes
+    *    into ip:port and return a Peer object associated with t.
+    *
+    *    @param bytes   The byte String to parse the IP and Port from.
+    *    @param t       The Torrent this peer is associated with.
+    */
     public static Peer parse(String bytes, Torrent t) {
-        /*
-            Given a String containing 6 bytes, parse these bytes
-            into ip:port and return a Peer object associated with t.
-
-            TODO: Error checking on length of input
-        */
 
         String peerIP  = "";
         int peerPort;
@@ -130,8 +138,9 @@ public class Peer extends Thread {
         try {
             performHandShake();
         }
-        catch(Exception e) {
+        catch(IOException e) {
             System.out.println("Could not complete peer handshake");
+            e.printStackTrace();
             closePeerConnection();
             torrent.removePeer(this);
         }
@@ -158,6 +167,7 @@ public class Peer extends Thread {
                     Thread.sleep(10);
                 }
                 else {
+                    // Peer doesn't have anything to say, we will send a message.
                     sendPeerMessage();
                     Thread.sleep(10);
                 }
@@ -207,6 +217,8 @@ public class Peer extends Thread {
             If the peer has nothing to say we will
             send an Interested message if we are choked.
             otherwise we will request a piece of the file.
+            If we are paused we will wait, periodically sending
+            keep alive messages.
         */
         if(peerChoking) {
             if(canSend) {
@@ -239,7 +251,8 @@ public class Peer extends Thread {
 
     private void chainRequests() {
         /*
-            Queue multiple requests to improve performance.
+            Send up to 5 requests to this peer. We are chaining requests
+            to improve download performance.
         */
         while(numOfPendingRequests < 5) {
             Request r = torrent.getNextRequest(this);
@@ -258,8 +271,7 @@ public class Peer extends Thread {
 
     private void connectAndSetUp() throws IOException {
         /*
-            May need to change this.
-            The name doesn't describe what's happening well enough.
+            Connect to the peer and set up the data streams
         */
 
         peerConnectingEvent(true, false, false);    
@@ -353,7 +365,11 @@ public class Peer extends Thread {
     }
 
     /*
-        Public methods
+        Public methods ------------------------------------------------------
+    */
+
+    /**
+    *   Close all connections to this Peer.
     */
     public void closePeerConnection() {
         try {
@@ -374,36 +390,80 @@ public class Peer extends Thread {
         connected = false;
     }
 
+    /**
+    *   Pausing the peer involves keeping the communication open
+    *   but the peer will stop requesting pieces. When paused the Peer
+    *   will periodically send keep alive messages to keep the connection
+    *   open.
+    */
     public void pause() {
         paused = true;
         pauseStart = System.currentTimeMillis();
     }
 
+    /**
+    *   Tell this peer to continue downloading. This method is used
+    *   on Peers that are paused.
+    */
     public void resumeDownload() {
         System.out.println("Peer: " + this + " resuming");
         paused = false;
     }
 
+    /**
+    *   This method is used to set this peer as an incoming connection
+    *   or a Peer that we are connecting to.
+    *
+    *   @param b    True if this is an incoming connection, false otherwise.
+    */
     public void setIncoming(boolean b) {
         incomingPeer = b;
     }
 
+    /**
+    *   @return     A String representation of this Peer.
+    *               It will contain the IP and port of this peer.
+    */  
     public String toString() {
         return ip + ":" + port;
     }
 
+    /**
+    *   @return     The IP address of this peer.
+    */
     public String getIP() {
         return ip;
     }
 
+    /**
+    *   @return     True if this Peer has an established connection, 
+    *               false otherwise.
+    */
     public boolean connected() {
         return connected;
     }
 
+    /**
+    *   This method is used to check if this peer can download the Piece at
+    *   position {@code i}
+    *
+    *   @param i    The index of the piece to check if this Peer can download.
+    *   @return     True if the bit is set in this Peers Bitfield, false
+    *               otherwise.
+    *
+    *   @see btv.download.message.Piece
+    *   @see btv.download.message.Bitfield
+    */
     public boolean canDownload(int i) {
         return bitfield.bitSet(i);
     }
 
+    /**
+    *   Tell this Peer to cancel a specific request.
+    *
+    *   @param r    The Request to cancel.
+    *
+    */
     public void cancel(Request r) {
         if(requested.contains(r)) {
             new Cancel(Message.CANCEL, 13, r.getIndex(), r.getOffset(),
@@ -412,12 +472,38 @@ public class Peer extends Thread {
         }
     }
 
+    /**
+    *   Add a PeerConnectionListener to this peer.
+    *
+    *   @param p    The PeerConnectionListener to add.
+    *   @see    btv.event.peer.PeerConnectionListener
+    *
+    */
+    public void addPeerConnectionListener(PeerConnectionListener p) {
+        if(p != null) {
+            connectionListeners.add(p);
+        }
+    }
+
+    /**
+    *   Add a PeerCommunicationListener to this Peer.
+    *
+    *   @param p    The PeerCommunicationListener to add.
+    *   @see btv.event.peer.PeerCommunicationListener
+    *
+    */
+    public void addPeerCommunicationListener(PeerCommunicationListener p) {
+        if(p != null) {
+            communicationListeners.add(p);
+        }
+    }
+
     /*
-        End of public methods
+        End of public methods -----------------------------------------------
     */
 
     /*
-        Message receiving methods.
+        Message receiving methods. ------------------
     */
 
     private void choke() {
@@ -456,8 +542,11 @@ public class Peer extends Thread {
     }
 
     /*
-        Event handling methods.
+        End of message receiving methods ------------
+    */
 
+    /*
+        Event handling methods. -----------------------------------------------
     */
 
     private void peerConnectingEvent(boolean connecting, boolean connected, 
@@ -474,22 +563,16 @@ public class Peer extends Thread {
 
     private void peerCommunicationEvent(boolean dataSent, boolean dataReceived, 
                                             int messageType) {
+        /*
+            Inform our listeners that we are communicating with this peer.
+        */
         PeerCommunicationEvent e = new PeerCommunicationEvent(this, ip,
                                     dataReceived, dataSent, messageType);
         for(PeerCommunicationListener p : communicationListeners) {
             p.handlePeerEvent(e);
         }
     }
-
-    public void addPeerConnectionListener(PeerConnectionListener p) {
-        if(p != null) {
-            connectionListeners.add(p);
-        }
-    }
-
-    public void addPeerCommunicationListener(PeerCommunicationListener p) {
-        if(p != null) {
-            communicationListeners.add(p);
-        }
-    }
+    /*
+        End of event handling methods. ----------------------------------------
+    */
 }

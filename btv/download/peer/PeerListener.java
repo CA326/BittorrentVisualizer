@@ -7,12 +7,12 @@
 */
 
 package btv.download.peer;
-import btv.download.Torrent;
+import btv.download.torrent.Torrent;
 
 import java.net.*;
 import java.io.*;
 
-public class PeerListener extends Thread {
+class PeerListener extends Thread {
 	private Torrent torrent;
 	private ServerSocket server;
 

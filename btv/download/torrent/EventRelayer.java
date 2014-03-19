@@ -11,7 +11,7 @@ import btv.event.torrent.TorrentListener;
 
 import java.util.ArrayList;
 
-public class EventRelayer extends Thread {
+class EventRelayer extends Thread {
     private Torrent torrent;
     private ArrayList<TorrentListener> listeners;
     private boolean canRun = true;
