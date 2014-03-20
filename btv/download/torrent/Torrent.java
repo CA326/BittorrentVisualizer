@@ -322,13 +322,15 @@ public class Torrent extends Thread {
             int put = 0;
             while(put < pieceLength) {
                 if(l < getBlockSize()) {
+                    // Last piece.
                     requested.put(new Request(Message.REQUEST, 13, i, put, l), 0);
                     put += l;
                     l -= put;
                     break;
                 }
                 else {
-                    requested.put(new Request(Message.REQUEST, 13, i, put, getBlockSize()), 0);
+                    requested.put(new Request(Message.REQUEST, 13, i, put, 
+                                                getBlockSize()), 0);
                     put += getBlockSize();
                     l -= getBlockSize();
                 }
