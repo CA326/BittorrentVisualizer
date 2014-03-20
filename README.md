@@ -1,4 +1,6 @@
 ##CA326 Third year project.
+BitTorrent Visualiser (BTV) is a BitTorrent client, implemented in Java, which gives a visual representation of BitTorrent downloads in near real time.
+
 
 Currently: Debugging, improving performance. Visualisation window is a bit untidy(some peers off screen etc).
 
@@ -47,3 +49,6 @@ Currently: Debugging, improving performance. Visualisation window is a bit untid
 #### 17th March 2014
 - Visualisation stutters when opened if the download is already in progress.
 - If torrent is removed we need to close Visualisation window
+
+###
+Authors: Stephan McLean & Kevin Sweeney
