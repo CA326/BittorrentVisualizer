@@ -1,8 +1,19 @@
 ##CA326 Third year project.
 BitTorrent Visualiser (BTV) is a BitTorrent client, implemented in Java, which gives a visual representation of BitTorrent downloads in near real time.
 
+### Requirements
+Java 7
+JavaFX 2.0
 
-Currently: Debugging, improving performance. Visualisation window is a bit untidy(some peers off screen etc).
+### To run the project
+#### OSX
+javac -cp ".:/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/jfxrt.jar" btv/client/gui/BTVUI.java
+
+java -cp ".:/Library/Java/JavaVirtualMachines/jdk1.7.0_45.jdk/Contents/Home/jre/lib/jfxrt.jar" btv/client/gui/BTVUI
+
+
+###Currently: 
+Debugging, improving performance. Visualisation window is a bit untidy(some peers off screen etc).
 
 ### Screenshot of Visualisation.
 ![alt tag](Screen Shot 2014-03-15 at 17.10.44.png)
