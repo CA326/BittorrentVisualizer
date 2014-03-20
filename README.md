@@ -50,5 +50,5 @@ Currently: Debugging, improving performance. Visualisation window is a bit untid
 - Visualisation stutters when opened if the download is already in progress.
 - If torrent is removed we need to close Visualisation window
 
-###
-Authors: Stephan McLean & Kevin Sweeney
+### Authors
+Stephan McLean & Kevin Sweeney
