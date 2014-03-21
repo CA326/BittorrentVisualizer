@@ -1,5 +1,6 @@
 package btv.download;
 
+import btv.bencoding.BDecodingException;
 import btv.download.torrent.Torrent;
 import btv.download.peer.Peer;
 import btv.event.torrent.TorrentListener;
@@ -9,6 +10,7 @@ import btv.event.peer.PeerCommunicationListener;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Set;
+import java.io.FileNotFoundException;
 
 /**
 *	The main interface to the BTV API. This class handles adding Torrents
@@ -38,11 +40,13 @@ public class DLManager {
 	*				pause and remove the Torrent. It can also be used to add
 	*				listeners to the torrent.
 	*/
-	public String add(String fileName) {
+	public String add(String fileName) throws FileNotFoundException,
+							 BDecodingException {
+
 		Torrent t = new Torrent(fileName);
 		String name = t.name();
 		downloads.put(name, t);
-		return name;
+		return name;	
 	}
 
 	/**
@@ -124,7 +128,12 @@ public class DLManager {
 	*	@see 	btv.download.torrent.Torrent
 	*/
 	public Torrent get(String name) {
-		return downloads.get(name);
+		if(downloads.containsKey(name)) {
+			return downloads.get(name);
+		}
+		else {
+			return null;
+		}
 	}
 
 	/**

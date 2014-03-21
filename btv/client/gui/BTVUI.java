@@ -9,6 +9,7 @@
 
 package btv.client.gui;
 import btv.download.DLManager;
+import btv.bencoding.BDecodingException;
 import btv.download.peer.Peer;
 import btv.download.utils.ByteCalculator;
 import btv.event.torrent.TorrentEvent;
@@ -36,6 +37,7 @@ import javax.swing.table.TableColumn;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.io.File;
+import java.io.FileNotFoundException;
 
 class BTVUI extends JFrame {
 
@@ -149,12 +151,20 @@ class BTVUI extends JFrame {
     }
 
     public void addTorrent(String fileName) {
-        String name = downloadManager.add(fileName);
-        downloadManager.addTorrentListener(new MyTorrentListener(), name);
-        torrents.put(name, numTorrents);
+        try {
+            String name = downloadManager.add(fileName);
+            downloadManager.addTorrentListener(new MyTorrentListener(), name);
+            torrents.put(name, numTorrents);
 
-        tableModel.addRow(new Object [] {name, "0", 0, 0});
-        numTorrents++;
+            tableModel.addRow(new Object [] {name, "0", 0, 0});
+            numTorrents++;
+        }
+        catch(FileNotFoundException e) {
+            System.out.println("File not found: " + fileName);
+        }
+        catch(BDecodingException e) {
+            System.out.println("Could not read file: " + fileName);
+        }
     }
 
     public void startTorrent(String name) {

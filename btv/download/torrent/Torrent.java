@@ -21,6 +21,7 @@ import btv.event.peer.PeerCommunicationListener;
 import java.util.*;
 import java.io.RandomAccessFile;
 import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.io.FileInputStream;
 import java.io.File;
 import java.math.BigInteger;
@@ -78,30 +79,33 @@ public class Torrent extends Thread {
     *   @param fileName     The name of the meta-info file.
     *
     */
-    public Torrent(String fileName) {
+    public Torrent(String fileName) throws FileNotFoundException, 
+                                        BDecodingException {
 
-        try {
+        String metaFileData = readFile(fileName);
+        if(metaFileData != null) {
+            
             metainfo = (Map) BDecoder.decode(readFile(fileName));
+            infoDict = (Map) metainfo.get("info");
+            pieceLength = (int) infoDict.get("piece length");
+            pieces = (String) infoDict.get("pieces");
+            setUpFiles();
+            numberOfPieces = pieces.length() / 20;
+            requested = new HashMap<Request, Integer>();
+
+            initBitfield();
+            initRequested();
+
+            hash = computeHash();
+            peerID = generatePeerID();
+            peers = new ArrayList<Peer>();
+            trackers = new ArrayList<Tracker>();
+
+            relayer = new EventRelayer(this);
         }
-        catch(BDecodingException e) {
-            e.printStackTrace();
+        else {
+            throw new FileNotFoundException();
         }
-        infoDict = (Map) metainfo.get("info");
-        pieceLength = (int) infoDict.get("piece length");
-        pieces = (String) infoDict.get("pieces");
-        setUpFiles();
-        numberOfPieces = pieces.length() / 20;
-        requested = new HashMap<Request, Integer>();
-
-        initBitfield();
-        initRequested();
-
-        hash = computeHash();
-        peerID = generatePeerID();
-        peers = new ArrayList<Peer>();
-        trackers = new ArrayList<Tracker>();
-
-        relayer = new EventRelayer(this);
     }
 
     private void setUpFiles() {
@@ -425,18 +429,23 @@ public class Torrent extends Thread {
         StringBuilder builder = new StringBuilder();
         int c;
         FileInputStream in = null;
-        try {
-            in = new FileInputStream(new File(fileName));
+        if(new File(fileName).isFile()) {
+            try {
+                in = new FileInputStream(new File(fileName));
 
-            while((c = in.read()) != -1) {
-                builder.append((char) c);
+                while((c = in.read()) != -1) {
+                    builder.append((char) c);
+                }
+                in.close();
             }
-            in.close();
+            catch(IOException e) {
+              System.out.println("Error reading metainfo file.");
+            }
+            return builder.toString();
         }
-        catch(IOException e) {
-            System.out.println("Error reading metainfo file.");
+        else {
+            return null;
         }
-        return builder.toString();
     }
 
     /*

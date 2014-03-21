@@ -11,8 +11,10 @@ package btv.client.cli;
 import btv.download.DLManager;
 import btv.event.torrent.TorrentEvent;
 import btv.event.torrent.TorrentListener;
+import btv.bencoding.BDecodingException;
 
 import java.util.*;
+import java.io.FileNotFoundException;
 
 class BTVCLI {
 	private DLManager d;
@@ -43,8 +45,17 @@ class BTVCLI {
 	}
 
 	public void addTorrent(String fileName) {
-		torrents.put(numTorrents, d.add(fileName));
-		numTorrents++;
+		try {
+			String name = d.add(fileName);
+			torrents.put(numTorrents, );
+			numTorrents++;
+		}
+		catch(FileNotFoundException e) {
+			System.out.println("File not found: " + fileName);
+		}
+		catch(BDecodingException e) {
+			System.out.println("Could not decode: " + fileName);
+		}
 	}
 
 	class MyTorrentListener implements TorrentListener {
