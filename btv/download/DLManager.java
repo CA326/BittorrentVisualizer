@@ -56,9 +56,6 @@ public class DLManager {
 	*
 	*/
 	public void start(String name) {
-		/*
-			Start the download with the appropriate name
-		*/
 		if(downloads.containsKey(name)) {
 			Torrent t = downloads.get(name);
 			if(!t.isStarted()) {
@@ -132,7 +129,7 @@ public class DLManager {
 			return downloads.get(name);
 		}
 		else {
-			return null;
+			return null; // Fix this
 		}
 	}
 

@@ -547,6 +547,11 @@ public class Peer extends Thread {
 
     /*
         Event handling methods. -----------------------------------------------
+        These methods need refactoring, very hard to understand from where
+        they are called.
+        To fix this I think we will implement a PeerConnectionState class
+        with an ID for the connection state rather than booleans. And a similar
+        approach for the communicationevents.
     */
 
     private void peerConnectingEvent(boolean connecting, boolean connected, 

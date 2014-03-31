@@ -129,6 +129,7 @@ class BTVUI extends JFrame {
         tableModel.addColumn("Complete");
         tableModel.addColumn("Peers");
         table = new JTable(tableModel);
+        table.setToolTipText("Double click a row to open a visualisation.");
         TableColumn col = table.getColumnModel().getColumn(2);
         col.setCellRenderer(new ProgressCellRenderer());
 

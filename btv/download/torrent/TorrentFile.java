@@ -1,4 +1,4 @@
-package btv.download.utils;
+package btv.download.torrent;
 
 import java.nio.channels.FileChannel;
 import java.io.File;

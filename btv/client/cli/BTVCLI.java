@@ -47,7 +47,7 @@ class BTVCLI {
 	public void addTorrent(String fileName) {
 		try {
 			String name = d.add(fileName);
-			torrents.put(numTorrents, );
+			torrents.put(numTorrents, name);
 			numTorrents++;
 		}
 		catch(FileNotFoundException e) {
@@ -60,7 +60,7 @@ class BTVCLI {
 
 	class MyTorrentListener implements TorrentListener {
 		public void handleTorrentEvent(TorrentEvent e) {
-			System.out.println(e);
+			System.out.println(e.getName() + " " + e.getDownloadedPercent());
 		}
 	}
 

@@ -4,7 +4,6 @@ import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
 import btv.bencoding.BDecodingException;
 import btv.download.utils.SHA1;
-import btv.download.utils.TorrentFile;
 import btv.download.peer.Peer;
 import btv.download.tracker.Tracker;
 import btv.download.tracker.HTTPTracker;
@@ -85,7 +84,7 @@ public class Torrent extends Thread {
         String metaFileData = readFile(fileName);
         if(metaFileData != null) {
             
-            metainfo = (Map) BDecoder.decode(readFile(fileName));
+            metainfo = (Map) BDecoder.decode(fileName);
             infoDict = (Map) metainfo.get("info");
             pieceLength = (int) infoDict.get("piece length");
             pieces = (String) infoDict.get("pieces");
@@ -346,6 +345,7 @@ public class Torrent extends Thread {
         
         closePeerConnections();
 
+        // Make this a method ------------------------------------------
         if(torrentFiles.size() > 1) {
             int start = 0;
             // Now finalise the files.
@@ -362,7 +362,9 @@ public class Torrent extends Thread {
             File rename = new File(torrentFiles.get(0).getPath());
             tempFile.renameTo(rename);
             
-        }   
+        }
+
+        // ------------------------------------------------------------   
         stopRelayer();
     }
 
