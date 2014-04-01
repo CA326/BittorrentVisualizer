@@ -23,8 +23,16 @@ public class SHA1 {
         MessageDigest md;
         md = MessageDigest.getInstance("SHA-1");
         byte[] sha1hash = new byte[40];
-        md.update(text.getBytes("iso-8859-1"), 0, text.length());
-        sha1hash = md.digest();
+        //md.update(text.getBytes("iso-8859-1"), 0, text.length());
+        sha1hash = md.digest(text.getBytes("ISO-8859-1"));
+        return convertToHex(sha1hash);
+    }
+
+    public static String hexdigest(byte [] input) throws Exception {
+        MessageDigest md;
+        md = MessageDigest.getInstance("SHA-1");
+        byte[] sha1hash = new byte[40];
+        sha1hash = md.digest(input);
         return convertToHex(sha1hash);
     }
 

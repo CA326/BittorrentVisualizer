@@ -23,12 +23,15 @@ import java.io.FileNotFoundException;
 */
 public class DLManager {
 	private HashMap<String, Torrent> downloads;
+	private String basePeerID = "-BTV001-";
+	private String peerID;
 
 	/**
 	*	Constructor to set up a new download manager.
 	*/
 	public DLManager() {
 		downloads = new HashMap<String, Torrent>();
+		peerID = generatePeerID();
 	}
 
 	/**
@@ -43,7 +46,7 @@ public class DLManager {
 	public String add(String fileName) throws FileNotFoundException,
 							 BDecodingException {
 
-		Torrent t = new Torrent(fileName);
+		Torrent t = new Torrent(fileName, peerID);
 		String name = t.name();
 		downloads.put(name, t);
 		return name;	
@@ -55,16 +58,32 @@ public class DLManager {
 	* 	@param name 	The name of the Torrent to start. 
 	*
 	*/
-	public void start(String name) {
+	public void start(String name) throws FileNotFoundException, 
+												BDecodingException {
 		if(downloads.containsKey(name)) {
 			Torrent t = downloads.get(name);
-			if(!t.isStarted()) {
-				t.start();
+			if(t.stopped()) {
+				restart(t);
 			}
 			else if(t.paused()) {
 				t.resumeDownload();
 			}
+			else if(!t.isDownloading()) {
+				t.start();
+			}
 		}
+	}
+
+	private void restart(Torrent t) throws FileNotFoundException, 
+													BDecodingException {
+		Torrent newInstance = new Torrent(t.getFileName(), peerID);
+		ArrayList<TorrentListener> listeners = t.getTorrentListeners();
+		// TODO: Need to add peer listeners here as well
+		for(TorrentListener listener : listeners) {
+			newInstance.addTorrentListener(listener);
+		}
+		downloads.put(newInstance.name(), newInstance);
+		newInstance.start();
 	}
 
 	/**
@@ -93,7 +112,7 @@ public class DLManager {
 	public void stop(String name) {
 		if(downloads.containsKey(name)) {
 			Torrent t = downloads.get(name);
-			if(t.isStarted()) {
+			if(t.isDownloading()) {
 				try {
 					t.interrupt();
 					t.join();
@@ -210,4 +229,15 @@ public class DLManager {
 		}
 	}
 
+	private String generatePeerID() {
+        /*
+            Return a String containging the peer id, which consists of
+            the base id and a sequence of 12 random bytes.
+        */
+        String random = "";
+        for(int i = 0; i < 12; i++) {
+            random += 1 + ((int)(Math.random() * 9));
+        }
+        return basePeerID + random;
+    }
 }

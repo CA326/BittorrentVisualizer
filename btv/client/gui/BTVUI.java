@@ -169,7 +169,11 @@ class BTVUI extends JFrame {
     }
 
     public void startTorrent(String name) {
-        downloadManager.start(name);
+        try {
+            downloadManager.start(name);
+        }
+        catch(FileNotFoundException e) {}
+        catch(BDecodingException e) {}
     }
 
     public void stopTorrent(String name) {

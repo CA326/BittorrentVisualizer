@@ -4,6 +4,7 @@ import btv.bencoding.BDecoder;
 import btv.bencoding.BEncoder;
 import btv.bencoding.BDecodingException;
 import btv.download.utils.SHA1;
+import btv.download.utils.ByteCalculator;
 import btv.download.peer.Peer;
 import btv.download.tracker.Tracker;
 import btv.download.tracker.HTTPTracker;
@@ -24,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.FileInputStream;
 import java.io.File;
 import java.math.BigInteger;
+import javax.xml.bind.DatatypeConverter;
 /**
 *    This class represents a BitTorrent Torrent. This class is used to
 *    parse the meta-info file, contact trackers and set up our Peers
@@ -34,9 +36,9 @@ import java.math.BigInteger;
 *
 */
 public class Torrent extends Thread {
+    private String fileName;
     private Map metainfo, infoDict;
     private String hash;
-    private String basePeerID = "-BTV001-";
     private String peerID;
     private String port = "6881";
     private String downloaded = "0";
@@ -47,21 +49,20 @@ public class Torrent extends Thread {
     private int totalLength;
     private String pieces; // SHA1 values of each piece.
     private int numberOfPieces;
-    private ArrayList<Peer> peers;
+    private ArrayList<Peer> peers; // Active peers.
+    private ArrayList<Peer> allPeers;
     private Tracker tracker;
     private ArrayList<Tracker> trackers;
     private Bitfield bitfield;
     private HashMap<Request, Integer> requested;
     private int percentDownloaded;
-    private boolean started = false;
+    private boolean downloading = false;
     private boolean paused = false;
+    private boolean stopped = false;
 
     private final static int MAX_CONNECTIONS = 10;
 
-    // File related vars
-    private RandomAccessFile file;
-    private File tempFile;
-    private ArrayList<TorrentFile> torrentFiles;
+    private TorrentFileWriter fileWriter;
 
     private EventRelayer relayer;
 
@@ -76,101 +77,80 @@ public class Torrent extends Thread {
     *   also be created.
     *
     *   @param fileName     The name of the meta-info file.
+    *   @param peerID       The peer ID of our client.
     *
     */
-    public Torrent(String fileName) throws FileNotFoundException, 
+    public Torrent(String fileName, String peerID) throws FileNotFoundException, 
                                         BDecodingException {
 
-        String metaFileData = readFile(fileName);
-        if(metaFileData != null) {
-            
-            metainfo = (Map) BDecoder.decode(fileName);
-            infoDict = (Map) metainfo.get("info");
-            pieceLength = (int) infoDict.get("piece length");
-            pieces = (String) infoDict.get("pieces");
-            setUpFiles();
-            numberOfPieces = pieces.length() / 20;
-            requested = new HashMap<Request, Integer>();
+        this.fileName = fileName;
+        this.peerID = peerID;
+        initMetaInfo(fileName);
+        initBitfield();
+        initRequested();
 
-            initBitfield();
-            initRequested();
+        peers = new ArrayList<Peer>();
+        allPeers = new ArrayList<Peer>();
+        trackers = new ArrayList<Tracker>();
+        relayer = new EventRelayer(this);
+        fileWriter = new TorrentFileWriter(this);
+    }
 
-            hash = computeHash();
-            peerID = generatePeerID();
-            peers = new ArrayList<Peer>();
-            trackers = new ArrayList<Tracker>();
-
-            relayer = new EventRelayer(this);
+    private void checkResumeDownload() {
+        /*
+            Check the temporary file for data.
+            Update the bitfield & requested map if any
+            data is found.
+        */
+        try {
+            RandomAccessFile tempFile = fileWriter.getTempFile();
+            if(tempFile.length() > 0) {
+                Set<Request> requests = requested.keySet();
+                for(Request r : requests) {
+                    tempFile.seek((r.getIndex() * pieceLength) + r.getOffset());
+                    byte [] data = new byte[r.getBlockLength()];
+                    tempFile.read(data);
+                    String expectedSHA = pieces.substring(r.getIndex() * 20, (r.getIndex() * 20) + 20);
+                    expectedSHA = DatatypeConverter.printHexBinary(expectedSHA.getBytes("ISO-8859-1"));
+                    String actualSHA = SHA1.hexdigest(data);
+                    if(expectedSHA.toLowerCase().equals(actualSHA.toLowerCase())) {
+                        // Downloaded already
+                        requested.put(r, 1);
+                        updateDownloadStats(r.getBlockLength());
+                    }
+                }
+                System.out.println("Starting from: " + percentDownloaded + "%");
+            }
         }
-        else {
-            throw new FileNotFoundException();
+        catch(Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private void setUpFiles() {
-        /*
-            Create directories and create the temporary download file.
-        */
-        torrentFiles = new ArrayList<TorrentFile>();
-        String tempFilePath;
+    private void initMetaInfo(String fileName) throws FileNotFoundException,
+                                         BDecodingException {
+        String metaFileData = readFile(fileName);            
+        metainfo = (Map) BDecoder.decode(metaFileData);
+        infoDict = (Map) metainfo.get("info");
+        name = (String)infoDict.get("name");
+        pieceLength = (int) infoDict.get("piece length");
+        pieces = (String) infoDict.get("pieces");
+        numberOfPieces = pieces.length() / 20;
+        hash = computeHash();
+        calculateFileLength();
+        left = "" + totalLength;
+    }
 
+    private void calculateFileLength() {
         if(infoDict.containsKey("files")) {
             ArrayList<Map> files = (ArrayList<Map>) infoDict.get("files");
-            name = (String) infoDict.get("name");
-            
-            tempFilePath = name + "/" + name + ".temp";
-
             for(Map map : files) {
-                ArrayList<String> path = (ArrayList<String>) map.get("path");
                 int fileLen = (int) map.get("length");
                 totalLength += fileLen;
-                String p = name;
-                for(String s : path) {
-                    p += "/" + s;
-                }
-                torrentFiles.add(new TorrentFile(p, fileLen));
             }
         }
         else {
-            name = (String)infoDict.get("name");
-            totalLength = (int)infoDict.get("length");
-            tempFilePath = name + ".temp";
-            torrentFiles.add(new TorrentFile(name, totalLength));
-        }
-
-        left = "" + totalLength;
-        createTempFile(tempFilePath);
-    }
-
-    private void createTempFile(String tempFilePath) {
-        /*
-            We will use a tempory file to write to while downloading
-            which will be split into all the files associated with the 
-            Torrent at the end of the download
-        */
-        try {
-            tempFile = new File(tempFilePath);
-            if(tempFile.getParentFile() != null) {
-                tempFile.getParentFile().mkdirs();
-            }
-            tempFile.createNewFile();
-            file = new RandomAccessFile(tempFile, "rw"); // This is what we write to.
-        }
-        catch(IOException e) {
-            System.out.println("Could not create temporary file.");
-        }
-    }
-
-    private void deleteTempFile() {
-        /*
-            Delete the temporary file at the end of the download.
-        */
-        try {
-            file.close();
-            tempFile.delete();
-        }
-        catch(IOException e) {
-            System.out.println("Could not delete temporary file.");
+            totalLength = (int) infoDict.get("length");
         }
     }
 
@@ -241,10 +221,28 @@ public class Torrent extends Thread {
     }
 
     private void addPeer(Peer p) {
+        p.addPeerConnectionListener(peerConnectionListener);
+        p.addPeerCommunicationListener(peerCommunicationListener);
         synchronized(peers) {
-            peers.add(p);
-            p.addPeerConnectionListener(peerConnectionListener);
-            p.addPeerCommunicationListener(peerCommunicationListener);
+            if(peers.size() < MAX_CONNECTIONS) {
+                peers.add(p);
+            }
+            else {
+                // Save for later.
+                allPeers.add(p);
+            }
+        }
+    }
+
+    private void startNewPeers() {
+        // Try to keep peers at MAX_CONNECTIONS
+        if(allPeers.size() > 0) {
+            while(peers.size() < MAX_CONNECTIONS) {
+                Peer p = allPeers.get(0);
+                allPeers.remove(p);
+                peers.add(p);
+                p.start();
+            }
         }
     }
 
@@ -259,17 +257,13 @@ public class Torrent extends Thread {
         
         // Now parse the peers
         for(int i = 0; i < binaryPeer.length(); i += 12) {
-            if(peers.size() < MAX_CONNECTIONS) {
-                addPeer(Peer.parse(binaryPeer.substring(i, i + 12), this));
-            }
-            else {
-                break;
-            }
+            addPeer(Peer.parse(binaryPeer.substring(i, i + 12), this));
         }
     }
 
     public void run() {
-        started = true;
+        downloading = true;
+        checkResumeDownload();
         parseTracker();
         contactTracker();
         startPeers();
@@ -288,7 +282,8 @@ public class Torrent extends Thread {
             // Eventually we will use the cleanUp method to handle this, 
             // maybe pass a boolean to specify an interrupted download 
             // clean up.
-            started = false; // Name this better later.
+            downloading = false; // Name this better later.
+            stopped = true;
             closePeerConnections();
             stopRelayer();
         }    
@@ -304,9 +299,6 @@ public class Torrent extends Thread {
     }
 
     private void closePeerConnections() {
-        /*
-            Close all peer connections.
-        */
         synchronized(peers) {
             for(Peer p : peers) {
                 p.closePeerConnection();
@@ -320,6 +312,7 @@ public class Torrent extends Thread {
     }
 
     private void initRequested() {
+        requested = new HashMap<Request, Integer>();
         int l = Integer.parseInt(left);
         for(int i = 0; i < numberOfPieces; i++) {
             int put = 0;
@@ -342,29 +335,8 @@ public class Torrent extends Thread {
     }
 
     public void cleanUp() {
-        
         closePeerConnections();
-
-        // Make this a method ------------------------------------------
-        if(torrentFiles.size() > 1) {
-            int start = 0;
-            // Now finalise the files.
-            for(TorrentFile t : torrentFiles) {
-                t.write(file, start);
-                start += t.getLength();
-            }
-            deleteTempFile();
-        }
-        else {
-            // Only one file, rename it to avoid writing to
-            // the disk
-            // Need to check for null torrent file here 
-            File rename = new File(torrentFiles.get(0).getPath());
-            tempFile.renameTo(rename);
-            
-        }
-
-        // ------------------------------------------------------------   
+        fileWriter.writeFilesForFinishedDownload(); 
         stopRelayer();
     }
 
@@ -378,18 +350,6 @@ public class Torrent extends Thread {
             System.out.println("Could not end Relayer");
             e.printStackTrace();
         }
-    }
-
-    private String generatePeerID() {
-        /*
-            Return a String containging the peer id, which consists of
-            the base id and a sequence of 12 random bytes.
-        */
-        String random = "";
-        for(int i = 0; i < 12; i++) {
-            random += 1 + ((int)(Math.random() * 9));
-        }
-        return basePeerID + random;
     }
 
     private String computeHash() {
@@ -423,7 +383,7 @@ public class Torrent extends Thread {
         return new String(output);
     }
 
-    private String readFile(String fileName) {
+    private String readFile(String fileName) throws FileNotFoundException {
         /*
             Read the contents of the metainfo file and return
             as a String.
@@ -446,37 +406,30 @@ public class Torrent extends Thread {
             return builder.toString();
         }
         else {
-            return null;
+            throw new FileNotFoundException();
         }
     }
 
     /*
-        Peer related methods ----------------------------------------------
+        Peer and piece related methods ----------------------------------------
     */
+
+    public void pieceFailed(Piece p) {
+        /*
+            Piece download wasn't valid, mark it as not downloaded
+            so a Peer will pick it up as a request again.
+        */
+    }
 
     public synchronized void piece(Piece p) {
         /*
-            A peer has downloaded a block, write it to file.
-
-            TODO: Implement a file caching algorithm
-                  Also, need to check hash of pieces.
+            TODO: Better error handling. Need to set a piece as failed if it
+                    cannot be written.
         */
         try {
-            int index = p.getIndex();
-            int offset = p.getOffset();
-            byte [] block = p.getBlock();
-
-            file.seek((index * pieceLength) + offset);
-            file.write(block);
-            if(offset + block.length == getPieceLength()) {
-                bitfield.setBit(index);
-            }
-            left = "" + (Integer.parseInt(left) - block.length);
-            downloaded = "" + (Integer.parseInt(downloaded) + block.length);
-            double percent = (Double.parseDouble(left) / totalLength) * 100;
-            percent = 100 - percent;
-            percentDownloaded = (int) percent;
-
+            fileWriter.piece(p);
+            updateBitfield(p);
+            updateDownloadStats(p.getBlock().length);
             if(percentDownloaded >= 99) {
                 cancelPiece(p);
             }
@@ -484,6 +437,20 @@ public class Torrent extends Thread {
         catch(IOException e) {
             System.out.println("Could not write block to file.");
         }
+    }
+
+    private void updateBitfield(Piece p) {
+        if(p.getOffset() + p.getBlock().length == getPieceLength()) {
+            bitfield.setBit(p.getIndex());
+        }
+    }
+
+    private void updateDownloadStats(int numBytesDownloaded) {
+        left = "" + (Integer.parseInt(left) - numBytesDownloaded);
+        downloaded = "" + (Integer.parseInt(downloaded) + numBytesDownloaded);
+        double percent = (Double.parseDouble(left) / totalLength) * 100;
+        percent = 100 - percent;
+        percentDownloaded = (int) percent;
     }
 
     private int getBlockSize() {
@@ -506,7 +473,6 @@ public class Torrent extends Thread {
                 }
             }
         }
-
         return null;
     }
 
@@ -522,6 +488,7 @@ public class Torrent extends Thread {
             p.closePeerConnection();
             peers.remove(p);
         }
+        startNewPeers();
     }
 
     private void cancelPiece(Piece p) {
@@ -544,6 +511,20 @@ public class Torrent extends Thread {
     /*
         Getters & Setters -----------------------------------------------------
     */
+
+    /**
+    *   @return     The name of the meta-info file of this Torrent.
+    */
+    public String getFileName() {
+        return fileName;
+    }
+
+    /**
+    *   @return     The info-dictionary of the meta-info file.
+    */
+    public Map infoDict() {
+        return infoDict;
+    }
 
     /**
     *   @return     The SHA1 hash of the info dictionary in the meta-info file.
@@ -637,8 +618,8 @@ public class Torrent extends Thread {
     *   @return     True if this Torrent is currently downloading, 
     *               false otherwise.
     */
-    public boolean isStarted() {
-        return started;
+    public boolean isDownloading() {
+        return downloading;
     }
 
     /**
@@ -646,6 +627,13 @@ public class Torrent extends Thread {
     */
     public boolean paused() {
         return paused;
+    }
+
+    /**
+    *   @return     True if this download has been stopped.
+    */
+    public boolean stopped() {
+        return stopped;
     }
 
     /*
@@ -694,6 +682,10 @@ public class Torrent extends Thread {
         if(t != null) {
             relayer.addTorrentListener(t);
         }
+    }
+
+    public ArrayList<TorrentListener> getTorrentListeners() {
+        return relayer.getTorrentListeners();
     }
 
     /**

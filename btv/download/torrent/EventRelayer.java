@@ -46,4 +46,8 @@ class EventRelayer extends Thread {
     public void addTorrentListener(TorrentListener t) {
         listeners.add(t);
     }
+
+    public ArrayList<TorrentListener> getTorrentListeners() {
+        return listeners;
+    }
 }
